@@ -326,7 +326,15 @@ class _ObsoleteProductCard extends StatelessWidget {
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),
-                  subtitle: code.note.isEmpty ? null : Text(code.note),
+                  subtitle:
+                      code.secondaryDisplay != null || code.note.isNotEmpty
+                      ? Text(
+                          [
+                            ?code.secondaryDisplay,
+                            if (code.note.isNotEmpty) code.note,
+                          ].join(' · '),
+                        )
+                      : null,
                   trailing: IconButton.filledTonal(
                     tooltip: 'Diesen Code reaktivieren',
                     onPressed: () => onReactivate(code),
@@ -439,6 +447,14 @@ class _RetiredCodeCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    if (hit.code.secondaryDisplay case final secondary?)
+                      Text(
+                        secondary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                   ],
                 ),

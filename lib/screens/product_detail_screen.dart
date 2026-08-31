@@ -342,6 +342,12 @@ class _CurrentCodeCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
+                    if (code.secondaryDisplay case final secondary?)
+                      Text(
+                        secondary,
+                        style: Theme.of(context).textTheme.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
                     if (code.note.isNotEmpty) Text(code.note),
                   ],
                 ),
@@ -398,6 +404,8 @@ class _HistoryCodeCard extends StatelessWidget {
                           : 'Veraltet seit ${_formatDate(code.retiredAt!)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (code.secondaryDisplay case final secondary?)
+                      Text(secondary),
                     if (code.note.isNotEmpty) Text(code.note),
                   ],
                 ),

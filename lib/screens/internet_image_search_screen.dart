@@ -16,12 +16,16 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
   final _service = const ImageSuggestionService();
   late final TextEditingController _queryController;
   Future<List<RemoteImageSuggestion>>? _results;
+  bool _selectionHandled = false;
 
   @override
   void initState() {
     super.initState();
     _queryController = TextEditingController(text: widget.initialQuery);
-    _search();
+    final initialQuery = widget.initialQuery.trim();
+    if (initialQuery.isNotEmpty) {
+      _results = _service.search(initialQuery);
+    }
   }
 
   @override
@@ -92,7 +96,7 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
                     final suggestion = results[index];
                     return Card(
                       child: InkWell(
-                        onTap: () => Navigator.pop(context, suggestion),
+                        onTap: () => _selectSuggestion(suggestion),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -100,6 +104,9 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
                               child: Image.network(
                                 suggestion.imageUrl,
                                 fit: BoxFit.cover,
+                                headers: {
+                                  'User-Agent': 'RewePLUAssistent/1.0 (eu.dacjan.rewe_plu_assistent; dacjan@mailbox.org)',
+                                },
                                 errorBuilder: (_, _, _) => const ColoredBox(
                                   color: Colors.black12,
                                   child: Icon(Icons.broken_image_outlined),
@@ -154,8 +161,15 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
 
   void _search() {
     final query = _queryController.text.trim();
-    if (query.isEmpty) return;
+    if (query.isEmpty || !mounted) return;
     setState(() => _results = _service.search(query));
+  }
+
+  void _selectSuggestion(RemoteImageSuggestion suggestion) {
+    if (_selectionHandled || !mounted) return;
+    _selectionHandled = true;
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).pop(suggestion);
   }
 }
 

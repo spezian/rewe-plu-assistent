@@ -70,4 +70,48 @@ void main() {
     await tester.tap(find.byTooltip('Produktdetails'));
     expect(detailsOpened, isTrue);
   });
+
+  testWidgets('zeigt Bedienerkachel und Kategorie ohne Barcode-Aktion', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 8, 31);
+    final product = Product(
+      id: 'p2',
+      name: 'Pitahaya',
+      category: 'Obst',
+      createdAt: now,
+      updatedAt: now,
+      codes: [
+        ProductCode(
+          id: 'tile-1',
+          productId: 'p2',
+          type: ProductCodeType.cashierTile,
+          value: 'Kachel 6',
+          displayCategory: 'Obst > Exoten',
+          isActive: true,
+          createdAt: now,
+        ),
+      ],
+    );
+    var barcodeOpened = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProductCard(
+            product: product,
+            onTogglePinned: () async {},
+            onOpenDetails: () {},
+            onOpenImages: () {},
+            onShowCode: () => barcodeOpened = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Bedienerkachel: Kachel 6'), findsOneWidget);
+    expect(find.text('unter Obst > Exoten'), findsOneWidget);
+    await tester.tap(find.text('Pitahaya'));
+    expect(barcodeOpened, isFalse);
+  });
 }

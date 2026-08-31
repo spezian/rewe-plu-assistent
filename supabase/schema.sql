@@ -28,13 +28,22 @@ create table if not exists public.product_codes (
   id uuid primary key,
   product_id uuid not null references public.products(id) on delete cascade,
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  type text not null check (type in ('plu', 'price', 'barcode')),
+  type text not null check (type in ('plu', 'price', 'barcode', 'cashierTile')),
   value text not null,
   is_active boolean not null default false,
   note text not null default '',
+  display_category text,
   created_at timestamptz not null,
   retired_at timestamptz
 );
+
+alter table public.product_codes
+  add column if not exists display_category text;
+alter table public.product_codes
+  drop constraint if exists product_codes_type_check;
+alter table public.product_codes
+  add constraint product_codes_type_check
+  check (type in ('plu', 'price', 'barcode', 'cashierTile'));
 
 create table if not exists public.product_images (
   id uuid primary key,
@@ -114,6 +123,16 @@ create policy "owners delete images" on public.product_images
 insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
 on conflict (id) do update set public = true;
+
+-- Upserts und INSERT ... RETURNING benötigen auch eine SELECT-Policy.
+drop policy if exists "owners read stored product images" on storage.objects;
+create policy "owners read stored product images" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'product-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+    and owner_id = auth.uid()::text
+  );
 
 drop policy if exists "owners upload product images" on storage.objects;
 create policy "owners upload product images" on storage.objects

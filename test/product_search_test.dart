@@ -89,4 +89,32 @@ void main() {
     expect(searchProducts([marked], 'bio').currentProducts, [marked]);
     expect(searchProducts([marked], 'aktion').currentProducts, [marked]);
   });
+
+  test('findet eine Bedienerkachel über Kachel und Display-Kategorie', () {
+    final tileProduct = Product(
+      id: 'product-3',
+      name: 'Pitahaya',
+      category: 'Obst',
+      createdAt: now,
+      updatedAt: now,
+      codes: [
+        ProductCode(
+          id: 'tile-current',
+          productId: 'product-3',
+          type: ProductCodeType.cashierTile,
+          value: 'Kachel 6',
+          displayCategory: 'Obst > Exoten',
+          isActive: true,
+          createdAt: now,
+        ),
+      ],
+    );
+
+    expect(searchProducts([tileProduct], 'Kachel 6').currentProducts, [
+      tileProduct,
+    ]);
+    expect(searchProducts([tileProduct], 'Exoten').currentProducts, [
+      tileProduct,
+    ]);
+  });
 }

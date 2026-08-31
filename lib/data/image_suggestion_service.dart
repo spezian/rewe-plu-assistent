@@ -22,94 +22,111 @@ class ImageSuggestionService {
   const ImageSuggestionService();
 
   static const _endpoint = 'https://commons.wikimedia.org/w/api.php';
-  static const _userAgent = String.fromEnvironment(
-    'WIKIMEDIA_USER_AGENT',
-    defaultValue:
-        'RewePLUAssistent/1.2 (Android; eu.dacjan.rewe_plu_assistent)',
-  );
+  static const _userAgent = 'RewePLUAssistent/1.0 (eu.dacjan.rewe_plu_assistent; dacjan@mailbox.org)';
 
   Future<List<RemoteImageSuggestion>> search(String rawQuery) async {
     final query = rawQuery.trim();
-    if (query.isEmpty) return const [];
+    if (query.isEmpty) { return const []; }
+
     final uri = Uri.parse(_endpoint).replace(
       queryParameters: {
         'action': 'query',
         'format': 'json',
-        'formatversion': '2',
-        'generator': 'search',
-        'gsrsearch': '$query filetype:bitmap',
-        'gsrnamespace': '6',
-        'gsrlimit': '12',
+        'generator': 'images',
+        'titles': query,
+        'gimlimit': '50',
+        'redirects': '1',
+        "formatversion": "2",
         'prop': 'imageinfo',
         'iiprop': 'url|mime|extmetadata',
         'iiurlwidth': '900',
       },
     );
-    final response = await http
-        .get(
-          uri,
-          headers: {'User-Agent': _userAgent, 'Api-User-Agent': _userAgent},
-        )
-        .timeout(const Duration(seconds: 15));
+
+    final response = await http.get(uri, headers: {'User-Agent': _userAgent},)
+        .timeout(const Duration(seconds: 30));
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Bildsuche nicht erreichbar (${response.statusCode}).');
     }
-    return parseImageSuggestions(
-      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
-    );
+
+    return parseImageSuggestions(json.decode(response.body));
   }
 }
 
-List<RemoteImageSuggestion> parseImageSuggestions(
-  Map<String, dynamic> response,
-) {
-  final pages = response['query'] is Map<String, dynamic>
-      ? (response['query'] as Map<String, dynamic>)['pages']
-      : null;
-  if (pages is! List<dynamic>) return const [];
+List<RemoteImageSuggestion> parseImageSuggestions(Map<String, dynamic> response) {
+  if (!response.containsKey("query")) { return const []; }
+
+  final rawImages = response["query"]["pages"];
+
   final suggestions = <RemoteImageSuggestion>[];
-  for (final rawPage in pages) {
-    if (rawPage is! Map<String, dynamic>) continue;
-    final imageInfoList = rawPage['imageinfo'];
-    if (imageInfoList is! List<dynamic> || imageInfoList.isEmpty) continue;
-    final imageInfo = imageInfoList.first;
-    if (imageInfo is! Map<String, dynamic>) continue;
-    final mime = imageInfo['mime']?.toString() ?? '';
-    if (!{'image/jpeg', 'image/png', 'image/webp'}.contains(mime)) continue;
-    final imageUrl = (imageInfo['thumburl'] ?? imageInfo['url'])?.toString();
-    final sourcePage = imageInfo['descriptionurl']?.toString();
-    if (imageUrl == null || sourcePage == null) continue;
-    final metadata = imageInfo['extmetadata'] is Map<String, dynamic>
-        ? imageInfo['extmetadata'] as Map<String, dynamic>
-        : const <String, dynamic>{};
-    final rawTitle = rawPage['title']?.toString() ?? 'Wikimedia Commons';
+  for (final rawImage in rawImages) {
+    final rawImageInfo = rawImage["imageinfo"].first;
+
+    final mime = rawImageInfo['mime'];
+
+    if (mime != "image/jpeg" && mime != "image/png" && mime != "image/gif" && mime != "image/webp" && mime != "image/bmp" && mime != "image/vnd.wap.wbmp") {
+      continue;
+    }
+
+    final url = rawImageInfo['url'];
+    final sourcePage = rawImageInfo['descriptionurl'];
+
+    final rawMetadata = rawImageInfo['extmetadata'];
+    final title = rawMetadata['ObjectName']['value'];
+
     suggestions.add(
       RemoteImageSuggestion(
-        title: rawTitle
-            .replaceFirst(RegExp(r'^File:'), '')
-            .replaceAll('_', ' '),
-        imageUrl: imageUrl,
+        title: title,
+        imageUrl: _toWikimediaThumbnailUrl(url),
         sourcePageUrl: sourcePage,
         attribution:
-            _metadataText(metadata, 'Artist') ??
-            _metadataText(metadata, 'Credit'),
-        license: _metadataText(metadata, 'LicenseShortName'),
+            _extractText(rawMetadata, 'Artist') ??
+            _extractText(rawMetadata, 'Credit') ?? 'Wikimedia Commons',
+        license: rawMetadata['LicenseShortName']['value'] ?? 'Public domain',
       ),
     );
   }
+
   return suggestions;
 }
 
-String? _metadataText(Map<String, dynamic> metadata, String key) {
-  final entry = metadata[key];
-  if (entry is! Map<String, dynamic>) return null;
-  final value = entry['value']?.toString();
-  if (value == null || value.trim().isEmpty) return null;
-  return value
-      .replaceAll(RegExp(r'<[^>]*>'), ' ')
-      .replaceAll('&nbsp;', ' ')
-      .replaceAll('&amp;', '&')
-      .replaceAll('&quot;', '"')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+String? _extractText(Map<String, dynamic> metadata, String key) {
+  if (!metadata.containsKey(key)) { return null; }
+
+  RegExp exp = RegExp(r'<[^>]+>([^<]+)');
+  RegExpMatch? match = exp.firstMatch(metadata[key]['value']);
+
+  return match?.group(1);
+}
+
+String _toWikimediaThumbnailUrl(String originalUrl) {
+  final uri = Uri.parse(originalUrl);
+
+  final segments = uri.pathSegments;
+  final commonsIndex = segments.indexOf('commons');
+
+  if (commonsIndex == -1 || commonsIndex + 3 >= segments.length) {
+    throw FormatException('Invalid Wikimedia Commons image URL');
+  }
+
+  final fileName = segments.last;
+
+  // SVG thumbnails are rendered as PNG files.
+  final thumbnailName = fileName.toLowerCase().endsWith('.svg')
+      ? '330px-$fileName.png'
+      : '330px-$fileName';
+
+  final thumbnailSegments = [
+    ...segments.sublist(0, commonsIndex + 1),
+    'thumb',
+    ...segments.sublist(commonsIndex + 1),
+    thumbnailName,
+  ];
+
+  return Uri(
+    scheme: uri.scheme,
+    host: uri.host,
+    pathSegments: thumbnailSegments,
+  ).toString();
 }

@@ -385,7 +385,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
     final uniqueCodes = <String>{};
     for (final code in _codes) {
-      final key = '${code.type.name}:${code.normalizedValue}';
+      final key =
+          '${code.type.name}:${code.normalizedValue}:${code.displayCategoryValue}';
       if (!uniqueCodes.add(key)) {
         _showError('Derselbe Code ist mehrfach eingetragen.');
         return;
@@ -401,7 +402,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       final codeChanged =
           original != null &&
           (original.type != draft.type ||
-              original.value != draft.normalizedValue);
+              original.value != draft.normalizedValue ||
+              (original.displayCategory ?? '') != draft.displayCategoryValue);
       if (original != null &&
           original.isActive &&
           draft.isActive &&
@@ -464,6 +466,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   void _addImage(String localPath, {RemoteImageSuggestion? suggestion}) {
+    if (!mounted) return;
     setState(() {
       _images.add(
         ProductImageData(
@@ -486,6 +489,7 @@ class _CodeDraft {
     required this.draftId,
     required this.type,
     required this.valueController,
+    required this.displayCategoryController,
     required this.noteController,
     required this.isActive,
     this.original,
@@ -495,6 +499,7 @@ class _CodeDraft {
     draftId: const Uuid().v4(),
     type: ProductCodeType.plu,
     valueController: TextEditingController(),
+    displayCategoryController: TextEditingController(),
     noteController: TextEditingController(),
     isActive: isActive,
   );
@@ -503,6 +508,9 @@ class _CodeDraft {
     draftId: code.id,
     type: code.type,
     valueController: TextEditingController(text: code.value),
+    displayCategoryController: TextEditingController(
+      text: code.displayCategory ?? '',
+    ),
     noteController: TextEditingController(text: code.note),
     isActive: code.isActive,
     original: code,
@@ -511,6 +519,7 @@ class _CodeDraft {
   final String draftId;
   ProductCodeType type;
   final TextEditingController valueController;
+  final TextEditingController displayCategoryController;
   final TextEditingController noteController;
   bool isActive;
   final ProductCode? original;
@@ -521,6 +530,10 @@ class _CodeDraft {
     final price = double.tryParse(raw.replaceAll(',', '.'));
     return price == null ? raw.replaceAll(',', '.') : price.toStringAsFixed(2);
   }
+
+  String get displayCategoryValue => type == ProductCodeType.cashierTile
+      ? displayCategoryController.text.trim()
+      : '';
 
   ProductCode build({
     required String productId,
@@ -533,12 +546,14 @@ class _CodeDraft {
     value: normalizedValue,
     isActive: isActive,
     note: noteController.text.trim(),
+    displayCategory: displayCategoryValue.isEmpty ? null : displayCategoryValue,
     createdAt: original?.createdAt ?? now,
     retiredAt: isActive ? null : (original?.retiredAt ?? now),
   );
 
   void dispose() {
     valueController.dispose();
+    displayCategoryController.dispose();
     noteController.dispose();
   }
 }
@@ -609,18 +624,26 @@ class _CodeEditorCard extends StatelessWidget {
             const SizedBox(height: 10),
             TextFormField(
               controller: draft.valueController,
-              keyboardType: draft.type == ProductCodeType.price
-                  ? const TextInputType.numberWithOptions(decimal: true)
-                  : TextInputType.number,
-              inputFormatters: draft.type == ProductCodeType.price
-                  ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))]
-                  : [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'[0-9A-Za-z-]'),
-                      ),
-                    ],
+              keyboardType: switch (draft.type) {
+                ProductCodeType.price => const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                ProductCodeType.cashierTile => TextInputType.text,
+                _ => TextInputType.number,
+              },
+              inputFormatters: switch (draft.type) {
+                ProductCodeType.price => [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
+                ],
+                ProductCodeType.cashierTile => null,
+                _ => [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z-]')),
+                ],
+              },
               decoration: InputDecoration(
-                labelText: '${draft.type.label} *',
+                labelText: draft.type == ProductCodeType.cashierTile
+                    ? 'Kachel im Bedienerdisplay *'
+                    : '${draft.type.label} *',
                 hintText: draft.type.inputHint,
                 suffixIcon: draft.type == ProductCodeType.barcode
                     ? IconButton(
@@ -643,6 +666,21 @@ class _CodeEditorCard extends StatelessWidget {
                 return null;
               },
             ),
+            if (draft.type == ProductCodeType.cashierTile) ...[
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: draft.displayCategoryController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Kategorie im Bedienerdisplay *',
+                  hintText: 'z. B. Obst > Exoten',
+                  prefixIcon: Icon(Icons.account_tree_outlined),
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Bitte die Kassen-Kategorie angeben.'
+                    : null,
+              ),
+            ],
             const SizedBox(height: 10),
             TextFormField(
               controller: draft.noteController,

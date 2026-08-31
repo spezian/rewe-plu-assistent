@@ -248,13 +248,37 @@ class _CodeButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '${code.type.label}: ${code.displayValue}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                if (code.type == ProductCodeType.cashierTile) ...[
+                  const Icon(Icons.dashboard_customize_outlined, size: 20),
+                  const SizedBox(width: 7),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${code.type.label}: ${code.displayValue}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                      ),
+                      if (code.secondaryDisplay case final secondary?)
+                        Text(
+                          secondary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                    ],
                   ),
                 ),
                 if (canShow) ...[

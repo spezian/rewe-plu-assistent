@@ -7,7 +7,8 @@ mit Supabase abgeglichen.
 
 ## Funktionen
 
-- kompakte Produktliste mit direkt sichtbarem aktuellem PLU/Preis
+- kompakte Produktliste mit direkt sichtbarem aktuellem PLU, Preis, Barcode
+  oder einer Bedienerkachel samt Kategoriepfad (z. B. `Obst > Exoten`)
 - auffällige, kombinierbare Kennzeichnungen für Bio- und Aktionsprodukte
 - Barcode-Vollansicht für Barcode oder PLU mit maximaler App-Helligkeit
 - Wischen zum Anpinnen/Entpinnen, langes Drücken für Details
@@ -38,7 +39,9 @@ zeigt dann „Nur lokal“.
 1. Ein Supabase-Projekt erstellen.
 2. Im SQL Editor [supabase/schema.sql](supabase/schema.sql) ausführen.
    Bei einem bereits eingerichteten Projekt das aktualisierte Skript erneut
-   ausführen; es ergänzt Aliasse und die neue Bildertabelle idempotent.
+   ausführen; es ergänzt Aliasse, Bedienerkacheln, Bilder und die für Bild-Upserts
+   benötigte Storage-Lesepolicy idempotent. Diese erneute Ausführung behebt auch
+   den RLS-Syncfehler älterer Installationen.
 3. Unter **Authentication → Users → Add user** ein gemeinsames Konto mit
    E-Mail und einem starken Zugangspasswort anlegen. Öffentliche Registrierungen
    und anonyme Anmeldungen werden nicht benötigt.

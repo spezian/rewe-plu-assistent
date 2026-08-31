@@ -32,7 +32,7 @@ class LocalDatabase {
     );
     _database = await openDatabase(
       databasePath,
-      version: 4,
+      version: 5,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -61,6 +61,7 @@ class LocalDatabase {
             value TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 0,
             note TEXT NOT NULL DEFAULT '',
+            display_category TEXT,
             created_at TEXT NOT NULL,
             retired_at TEXT
           )
@@ -147,6 +148,11 @@ class LocalDatabase {
           );
           await database.execute(
             'ALTER TABLE products ADD COLUMN is_promotion INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+        if (oldVersion < 5) {
+          await database.execute(
+            'ALTER TABLE product_codes ADD COLUMN display_category TEXT',
           );
         }
       },

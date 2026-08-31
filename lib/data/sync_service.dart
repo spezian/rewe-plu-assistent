@@ -229,6 +229,13 @@ class SyncService {
     if (text.contains('Invalid login credentials')) {
       return 'E-Mail oder Passwort ist falsch.';
     }
+    final normalized = text.toLowerCase();
+    if (normalized.contains('row-level security') ||
+        normalized.contains('row level security') ||
+        normalized.contains('statuscode: 403')) {
+      return 'Supabase blockiert den Cloud-Bildzugriff per RLS. Bitte das '
+          'aktuelle supabase/schema.sql im SQL Editor erneut ausführen.';
+    }
     if (text.length > 180) return '${text.substring(0, 177)}…';
     return text;
   }

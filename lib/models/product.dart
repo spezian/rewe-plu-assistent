@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:intl/intl.dart';
 
-enum ProductCodeType { plu, price, barcode }
+enum ProductCodeType { plu, price, barcode, cashierTile }
 
 extension ProductCodeTypeX on ProductCodeType {
   String get databaseValue => name;
@@ -11,15 +11,18 @@ extension ProductCodeTypeX on ProductCodeType {
     ProductCodeType.plu => 'PLU',
     ProductCodeType.price => 'Preis',
     ProductCodeType.barcode => 'Barcode',
+    ProductCodeType.cashierTile => 'Bedienerkachel',
   };
 
   String get inputHint => switch (this) {
     ProductCodeType.plu => 'z. B. 4011',
     ProductCodeType.price => 'z. B. 1,49',
     ProductCodeType.barcode => 'Nummer scannen oder eingeben',
+    ProductCodeType.cashierTile => 'z. B. Kachel 6 oder Drachenfrucht',
   };
 
-  bool get canShowBarcode => this != ProductCodeType.price;
+  bool get canShowBarcode =>
+      this == ProductCodeType.plu || this == ProductCodeType.barcode;
 
   static ProductCodeType fromDatabase(String value) =>
       ProductCodeType.values.firstWhere(
@@ -37,6 +40,7 @@ class ProductCode {
     required this.isActive,
     required this.createdAt,
     this.note = '',
+    this.displayCategory,
     this.retiredAt,
   });
 
@@ -46,6 +50,7 @@ class ProductCode {
   final String value;
   final bool isActive;
   final String note;
+  final String? displayCategory;
   final DateTime createdAt;
   final DateTime? retiredAt;
 
@@ -57,7 +62,13 @@ class ProductCode {
     return NumberFormat.currency(locale: 'de_DE', symbol: '€').format(price);
   }
 
-  String get accessibilityLabel => '${type.label} $displayValue';
+  String get accessibilityLabel =>
+      ['${type.label} $displayValue', ?secondaryDisplay].join(', ');
+
+  String? get secondaryDisplay =>
+      type == ProductCodeType.cashierTile && displayCategory?.isNotEmpty == true
+      ? 'unter $displayCategory'
+      : null;
 
   ProductCode copyWith({
     String? id,
@@ -66,6 +77,7 @@ class ProductCode {
     String? value,
     bool? isActive,
     String? note,
+    String? displayCategory,
     DateTime? createdAt,
     DateTime? retiredAt,
     bool clearRetiredAt = false,
@@ -77,6 +89,7 @@ class ProductCode {
       value: value ?? this.value,
       isActive: isActive ?? this.isActive,
       note: note ?? this.note,
+      displayCategory: displayCategory ?? this.displayCategory,
       createdAt: createdAt ?? this.createdAt,
       retiredAt: clearRetiredAt ? null : (retiredAt ?? this.retiredAt),
     );
@@ -89,6 +102,7 @@ class ProductCode {
     'value': value,
     'is_active': isActive ? 1 : 0,
     'note': note,
+    'display_category': displayCategory,
     'created_at': createdAt.toUtc().toIso8601String(),
     'retired_at': retiredAt?.toUtc().toIso8601String(),
   };
@@ -100,6 +114,7 @@ class ProductCode {
     'value': value,
     'is_active': isActive,
     'note': note,
+    'display_category': displayCategory,
     'created_at': createdAt.toUtc().toIso8601String(),
     'retired_at': retiredAt?.toUtc().toIso8601String(),
   };
@@ -113,6 +128,7 @@ class ProductCode {
     value: map['value']! as String,
     isActive: (map['is_active']! as int) == 1,
     note: (map['note'] as String?) ?? '',
+    displayCategory: map['display_category'] as String?,
     createdAt: DateTime.parse(map['created_at']! as String).toLocal(),
     retiredAt: map['retired_at'] == null
         ? null
@@ -126,6 +142,7 @@ class ProductCode {
     value: map['value'] as String,
     isActive: map['is_active'] as bool? ?? false,
     note: map['note'] as String? ?? '',
+    displayCategory: map['display_category'] as String?,
     createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
     retiredAt: map['retired_at'] == null
         ? null

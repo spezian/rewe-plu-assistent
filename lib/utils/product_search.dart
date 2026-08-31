@@ -56,7 +56,10 @@ ProductSearchResult searchProducts(List<Product> products, String rawQuery) {
       if (product.isOrganic) 'bio biologisch oeko',
       if (product.isPromotion) 'aktion angebot reduziert rabatt',
       if (active != null) active.value,
+      ?active?.displayCategory,
       if (active == null) ...product.codes.map((code) => code.value),
+      if (active == null)
+        ...product.codes.map((code) => code.displayCategory ?? ''),
     ];
     final score = fields
         .map((field) => _fieldScore(query, normalizeSearchText(field)))
@@ -71,7 +74,9 @@ ProductSearchResult searchProducts(List<Product> products, String rawQuery) {
 
     for (final code
         in active == null ? const <ProductCode>[] : product.retiredCodes) {
-      final codeScore = _fieldScore(query, normalizeSearchText(code.value));
+      final codeScore = [code.value, code.displayCategory ?? '']
+          .map((field) => _fieldScore(query, normalizeSearchText(field)))
+          .fold(0, (best, value) => value > best ? value : best);
       final nameScore = _fieldScore(query, normalizeSearchText(product.name));
       final best = codeScore > nameScore ? codeScore : nameScore;
       if (best > 0) {
