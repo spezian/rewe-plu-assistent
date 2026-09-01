@@ -113,30 +113,6 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
                                 ),
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    suggestion.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  Text(
-                                    suggestion.license ?? 'Wikimedia Commons',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -150,7 +126,7 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
             top: false,
             minimum: EdgeInsets.fromLTRB(16, 5, 16, 10),
             child: Text(
-              'Vorschläge und Lizenzangaben: Wikimedia Commons',
+              'Vorschläge und Lizenzangaben: Unsplash',
               textAlign: TextAlign.center,
             ),
           ),
@@ -159,10 +135,10 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
     );
   }
 
-  void _search() {
+  void _search() async {
     final query = _queryController.text.trim();
     if (query.isEmpty || !mounted) return;
-    setState(() => _results = _service.search(query));
+    _results = _service.search(query).whenComplete(() => setState(() {}));
   }
 
   void _selectSuggestion(RemoteImageSuggestion suggestion) {

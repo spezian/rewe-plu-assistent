@@ -140,7 +140,7 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
     final parts = [
       if (image.attribution?.isNotEmpty == true) image.attribution!,
       if (image.license?.isNotEmpty == true) image.license!,
-      'Wikimedia Commons',
+      'Unsplash',
     ];
     return parts.join(' · ');
   }
