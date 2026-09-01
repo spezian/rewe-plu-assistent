@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/app_constants.dart';
 import '../models/product.dart';
 import 'local_database.dart';
 import 'sync_service.dart';
@@ -59,7 +60,7 @@ class ProductRepository {
         'Bitte eine gültige http(s)-Bildadresse eingeben.',
       );
     }
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri, headers: { "User-Agent": userAgent }).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException(
         'Bild konnte nicht geladen werden (${response.statusCode}).',

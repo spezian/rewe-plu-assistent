@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+import '../core/app_constants.dart';
 
 class RemoteImageSuggestion {
   const RemoteImageSuggestion({
@@ -36,6 +37,7 @@ class ImageSuggestionService {
       headers: {
         'Authorization': 'Client-ID ${const String.fromEnvironment('UNSPLASH_ACCESS_KEY')}',
         'Accept-Version': 'v1',
+        'User-Agent': userAgent,
       },
     );
 
@@ -46,8 +48,6 @@ class ImageSuggestionService {
     }
 
     final photos = jsonDecode(response.body) as Map<String, dynamic>;
-
-    debugPrint(photos.toString());
 
     if (photos["total"] == 0) {
       return [];

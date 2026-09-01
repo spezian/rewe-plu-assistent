@@ -227,7 +227,7 @@ class _CloudLoginDialogState extends State<_CloudLoginDialog> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: supabaseLoginEmail);
+    _emailController = TextEditingController();
   }
 
   @override
@@ -264,7 +264,7 @@ class _CloudLoginDialogState extends State<_CloudLoginDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
-              autofocus: supabaseLoginEmail.isNotEmpty,
+              autofocus: false,
               obscureText: _obscurePassword,
               autocorrect: false,
               onSubmitted: (_) => _login(),

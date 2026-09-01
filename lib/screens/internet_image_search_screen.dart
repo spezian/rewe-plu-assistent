@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rewe_plu_assistent/core/app_constants.dart';
 
 import '../data/image_suggestion_service.dart';
 
@@ -105,7 +106,7 @@ class _InternetImageSearchScreenState extends State<InternetImageSearchScreen> {
                                 suggestion.imageUrl,
                                 fit: BoxFit.cover,
                                 headers: {
-                                  'User-Agent': 'RewePLUAssistent/1.0 (eu.dacjan.rewe_plu_assistent; dacjan@mailbox.org)',
+                                  'User-Agent': userAgent,
                                 },
                                 errorBuilder: (_, _, _) => const ColoredBox(
                                   color: Colors.black12,
