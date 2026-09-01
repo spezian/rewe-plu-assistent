@@ -35,7 +35,7 @@ class ImageSuggestionService {
     final response = await http.get(
       uri,
       headers: {
-        'Authorization': 'Client-ID ${const String.fromEnvironment('UNSPLASH_ACCESS_KEY')}',
+        'Authorization': 'Client-ID $unsplashAccessKey',
         'Accept-Version': 'v1',
         'User-Agent': userAgent,
       },

@@ -317,13 +317,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               onTap: () => Navigator.pop(context, 'gallery'),
             ),
             ListTile(
-              enabled: _nameController.text.trim().isNotEmpty,
+              enabled: _nameController.text.trim().isNotEmpty && unsplashAccessKey.isNotEmpty,
               leading: const Icon(Icons.image_search),
               title: const Text('Bilder im Internet vorschlagen'),
               subtitle: Text(
                 _nameController.text.trim().isEmpty
                     ? 'Zuerst einen Produktnamen eingeben'
-                    : 'Passende Bilder für „${_nameController.text.trim()}“',
+                    : unsplashAccessKey.isEmpty
+                        ? 'Kein Unsplash-Zugriffsschlüssel konfiguriert!'
+                        : 'Passende Bilder für „${_nameController.text.trim()}“',
               ),
               onTap: _nameController.text.trim().isEmpty
                   ? null
@@ -815,14 +817,6 @@ class _ImagesEditor extends StatelessWidget {
           'Das erste Bild wird in der Produktliste verwendet.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        if (productName.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          FilledButton.tonalIcon(
-            onPressed: onSuggest,
-            icon: const Icon(Icons.image_search),
-            label: Text('Internetvorschläge für „$productName“'),
-          ),
-        ],
       ],
     );
   }
