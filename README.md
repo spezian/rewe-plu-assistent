@@ -1,9 +1,10 @@
 # REWE PLU Assistent
 
-Eine Flutter-App für das schnelle Finden von PLUs, Kassenpreise und schwer
-scanbare Produktbarcodes. Die App funktioniert offline-first: Änderungen landen
-sofort in SQLite und werden bei einer Verbindung über eine lokale Warteschlange
-mit Supabase abgeglichen.
+Eine webbasierte Flutter-App für das schnelle Finden von PLUs, Kassenpreisen
+und schwer scanbaren Produktbarcodes. Sie läuft als installierbare Progressive
+Web App (PWA) und funktioniert offline-first: Änderungen landen sofort in einer
+lokalen SQLite-Datenbank im Browser (IndexedDB) und werden bei einer Verbindung
+über eine lokale Warteschlange mit Supabase abgeglichen.
 
 ## Funktionen
 
@@ -16,20 +17,26 @@ mit Supabase abgeglichen.
 - klar abgetrennter Bereich für veraltete Codes und vollständig veraltete Produkte
 - mehrere Codes je Produkt; auch alle Codes dürfen gleichzeitig veraltet sein
 - mehrere Produktfotos mit Vollbild- und Zoomansicht
-- Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
+- Fotos über Kamera, Dateiauswahl oder produktbezogene Vorschläge von
   Unsplash
 - Barcode-Erfassung per Kamera
 - Offline-Datenbank, Sync-Warteschlange und passwortgeschützte Synchronisation
-- dauerhaft aktivierter Bildschirm-Wakelock
+- Screen-Wakelock, sofern der Browser ihn unterstützt
 
 ## Lokal starten
 
 ```bash
 flutter pub get
-flutter run
+flutter run -d chrome
 ```
 
-Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
+Ohne Cloud-Konfiguration arbeitet die App vollständig lokal. Der Kamerazugriff
+funktioniert in Browsern nur in einem sicheren Kontext, also unter `https://`
+oder auf `localhost`.
+
+Nach einem Update von `sqflite_common_ffi_web` lassen sich die eingecheckten
+Browser-Binärdateien mit `dart run sqflite_common_ffi_web:setup --force`
+erneuern.
 
 ## Supabase einrichten
 
@@ -41,23 +48,28 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
 3. Unter **Authentication → Users → Add user** ein gemeinsames Konto mit
    E-Mail und einem starken Zugangspasswort anlegen.
 
-## Run/Build
+## Start mit Cloud-Konfiguration
 
 ```bash
-flutter run \
+flutter run -d chrome \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
 
-Für ein Release-APK/Debug-APK gilt dasselbe:
+## Web-Release bauen
 
 ```bash
-flutter build apk \
+flutter build web --release \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
+
+Das veröffentlichungsfertige Ergebnis liegt anschließend in `build/web` und
+kann auf jedem statischen HTTPS-Host bereitgestellt werden. Die Dateien
+`web/sqlite3.wasm` und `web/sqflite_sw.js` gehören zum Projekt und ermöglichen
+den lokalen Offline-Speicher.
 
 # Lizenz
 Das Projekt ist lizenziert unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.

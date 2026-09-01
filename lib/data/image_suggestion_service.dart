@@ -22,29 +22,22 @@ class ImageSuggestionService {
   const ImageSuggestionService();
 
   Future<List<RemoteImageSuggestion>> search(String query) async {
-    final uri = Uri.https(
-      'api.unsplash.com',
-      '/search/photos',
-      {
-        'page': '1',
-        'per_page': '20',
-        'query': query,
-      },
-    );
+    final uri = Uri.https('api.unsplash.com', '/search/photos', {
+      'page': '1',
+      'per_page': '20',
+      'query': query,
+    });
 
     final response = await http.get(
       uri,
       headers: {
         'Authorization': 'Client-ID $unsplashAccessKey',
         'Accept-Version': 'v1',
-        'User-Agent': userAgent,
       },
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'Unsplash request failed: ${response.statusCode}',
-      );
+      throw Exception('Unsplash request failed: ${response.statusCode}');
     }
 
     final photos = jsonDecode(response.body) as Map<String, dynamic>;
@@ -56,11 +49,11 @@ class ImageSuggestionService {
     final suggestions = <RemoteImageSuggestion>[];
     for (final photo in photos["results"]) {
       suggestions.add(
-          RemoteImageSuggestion(
-              imageUrl: photo["urls"]?["small"],
-              sourcePageUrl: photo["links"]?["html"],
-              attribution: photo["user"]?["name"]
-          )
+        RemoteImageSuggestion(
+          imageUrl: photo["urls"]?["small"],
+          sourcePageUrl: photo["links"]?["html"],
+          attribution: photo["user"]?["name"],
+        ),
       );
     }
     return suggestions;

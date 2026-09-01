@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +7,7 @@ import '../app_scope.dart';
 import '../core/app_constants.dart';
 import '../data/image_suggestion_service.dart';
 import '../models/product.dart';
+import '../utils/data_image.dart';
 import 'barcode_scanner_screen.dart';
 import 'internet_image_search_screen.dart';
 import 'product_gallery_screen.dart';
@@ -317,15 +316,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               onTap: () => Navigator.pop(context, 'gallery'),
             ),
             ListTile(
-              enabled: _nameController.text.trim().isNotEmpty && unsplashAccessKey.isNotEmpty,
+              enabled:
+                  _nameController.text.trim().isNotEmpty &&
+                  unsplashAccessKey.isNotEmpty,
               leading: const Icon(Icons.image_search),
               title: const Text('Bilder im Internet vorschlagen'),
               subtitle: Text(
                 _nameController.text.trim().isEmpty
                     ? 'Zuerst einen Produktnamen eingeben'
                     : unsplashAccessKey.isEmpty
-                        ? 'Kein Unsplash-Zugriffsschlüssel konfiguriert!'
-                        : 'Passende Bilder für „${_nameController.text.trim()}“',
+                    ? 'Kein Unsplash-Zugriffsschlüssel konfiguriert!'
+                    : 'Passende Bilder für „${_nameController.text.trim()}“',
               ),
               onTap: _nameController.text.trim().isEmpty
                   ? null
@@ -822,8 +823,9 @@ class _ImagesEditor extends StatelessWidget {
   }
 
   Widget _imageWidget(BuildContext context, ProductImageData image) {
-    if (image.localPath != null && File(image.localPath!).existsSync()) {
-      return Image.file(File(image.localPath!), fit: BoxFit.cover);
+    final localImage = decodeDataImage(image.localPath);
+    if (localImage != null) {
+      return Image.memory(localImage.bytes, fit: BoxFit.cover);
     }
     if (image.remoteUrl != null && image.remoteUrl!.isNotEmpty) {
       return Image.network(image.remoteUrl!, fit: BoxFit.cover);

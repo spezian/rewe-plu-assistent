@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../utils/data_image.dart';
 
 class ProductImage extends StatelessWidget {
   const ProductImage({
@@ -20,10 +19,11 @@ class ProductImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final localPath = product.imagePath;
     final imageUrl = product.imageUrl;
+    final localImage = decodeDataImage(localPath);
     Widget child;
-    if (localPath != null && File(localPath).existsSync()) {
-      child = Image.file(
-        File(localPath),
+    if (localImage != null) {
+      child = Image.memory(
+        localImage.bytes,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => _fallback(context),
       );

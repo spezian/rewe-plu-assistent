@@ -1,14 +1,9 @@
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 
-import '../core/app_constants.dart';
 import '../models/product.dart';
+import '../utils/data_image.dart';
 import 'local_database.dart';
 import 'sync_service.dart';
 
@@ -18,7 +13,6 @@ class ProductRepository {
   final LocalDatabase _database;
   final SupabaseClient? supabaseClient;
   late final SyncService _sync = SyncService(_database, supabaseClient);
-  static const _uuid = Uuid();
 
   bool get isSyncConfigured => _sync.isConfigured;
   bool get isAuthenticated => _sync.isAuthenticated;
@@ -43,12 +37,10 @@ class ProductRepository {
   Future<int> pendingCount() => _database.pendingCount();
 
   Future<String> importPickedImage(XFile pickedFile) async {
-    final extension = path.extension(pickedFile.path).isEmpty
-        ? '.jpg'
-        : path.extension(pickedFile.path).toLowerCase();
-    final destination = await _newImagePath(extension);
-    await File(pickedFile.path).copy(destination);
-    return destination;
+    return encodeDataImage(
+      await pickedFile.readAsBytes(),
+      mimeType: pickedFile.mimeType ?? _mimeTypeForName(pickedFile.name),
+    );
   }
 
   Future<String> importImageFromUrl(String rawUrl) async {
@@ -60,9 +52,9 @@ class ProductRepository {
         'Bitte eine gültige http(s)-Bildadresse eingeben.',
       );
     }
-    final response = await http.get(uri, headers: { "User-Agent": userAgent }).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException(
+      throw StateError(
         'Bild konnte nicht geladen werden (${response.statusCode}).',
       );
     }
@@ -70,20 +62,20 @@ class ProductRepository {
     if (!contentType.startsWith('image/')) {
       throw const FormatException('Die Adresse verweist nicht auf ein Bild.');
     }
-    final extension = switch (contentType.split(';').first) {
-      'image/png' => '.png',
-      'image/webp' => '.webp',
-      _ => '.jpg',
-    };
-    final destination = await _newImagePath(extension);
-    await File(destination).writeAsBytes(response.bodyBytes, flush: true);
-    return destination;
+    return encodeDataImage(
+      response.bodyBytes,
+      mimeType: contentType.split(';').first,
+    );
   }
 
-  Future<String> _newImagePath(String extension) async {
-    final documents = await getApplicationDocumentsDirectory();
-    final directory = Directory(path.join(documents.path, 'product_images'));
-    await directory.create(recursive: true);
-    return path.join(directory.path, '${_uuid.v4()}$extension');
+  String? _mimeTypeForName(String name) {
+    final normalized = name.toLowerCase();
+    if (normalized.endsWith('.png')) return 'image/png';
+    if (normalized.endsWith('.webp')) return 'image/webp';
+    if (normalized.endsWith('.gif')) return 'image/gif';
+    if (normalized.endsWith('.jpg') || normalized.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    return null;
   }
 }

@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/product.dart';
+import '../utils/data_image.dart';
 
 class ProductGalleryScreen extends StatefulWidget {
   const ProductGalleryScreen({
@@ -114,8 +113,9 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
 
   Widget _fullImage(ProductImageData image) {
     final localPath = image.localPath;
-    if (localPath != null && File(localPath).existsSync()) {
-      return Image.file(File(localPath), fit: BoxFit.contain);
+    final localImage = decodeDataImage(localPath);
+    if (localImage != null) {
+      return Image.memory(localImage.bytes, fit: BoxFit.contain);
     }
     final remoteUrl = image.remoteUrl;
     if (remoteUrl != null && remoteUrl.isNotEmpty) {

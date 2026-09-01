@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:screen_brightness/screen_brightness.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/product.dart';
 
@@ -26,21 +26,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   @override
   void initState() {
     super.initState();
-    unawaited(
-      ScreenBrightness.instance
-          .setApplicationScreenBrightness(1)
-          .catchError((_) {}),
-    );
-  }
-
-  @override
-  void dispose() {
-    unawaited(
-      ScreenBrightness.instance.resetApplicationScreenBrightness().catchError(
-        (_) {},
-      ),
-    );
-    super.dispose();
+    unawaited(WakelockPlus.enable().catchError((_) {}));
   }
 
   @override

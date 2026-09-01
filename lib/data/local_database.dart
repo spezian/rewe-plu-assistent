@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-import 'package:path/path.dart' as path;
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common/sqlite_api.dart';
+import 'package:sqflite_common/utils/utils.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import '../models/product.dart';
 
@@ -26,18 +27,15 @@ class LocalDatabase {
 
   Future<void> initialize() async {
     if (_database != null) return;
-    final databasePath = path.join(
-      await getDatabasesPath(),
+    _database = await databaseFactoryFfiWeb.openDatabase(
       'rewe_plu_assistent.db',
-    );
-    _database = await openDatabase(
-      databasePath,
-      version: 5,
-      onConfigure: (database) async {
-        await database.execute('PRAGMA foreign_keys = ON');
-      },
-      onCreate: (database, version) async {
-        await database.execute('''
+      options: OpenDatabaseOptions(
+        version: 5,
+        onConfigure: (database) async {
+          await database.execute('PRAGMA foreign_keys = ON');
+        },
+        onCreate: (database, version) async {
+          await database.execute('''
           CREATE TABLE products (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -53,7 +51,7 @@ class LocalDatabase {
             updated_at TEXT NOT NULL
           )
         ''');
-        await database.execute('''
+          await database.execute('''
           CREATE TABLE product_codes (
             id TEXT PRIMARY KEY,
             product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -66,7 +64,7 @@ class LocalDatabase {
             retired_at TEXT
           )
         ''');
-        await database.execute('''
+          await database.execute('''
           CREATE TABLE product_images (
             id TEXT PRIMARY KEY,
             product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -79,7 +77,7 @@ class LocalDatabase {
             created_at TEXT NOT NULL
           )
         ''');
-        await database.execute('''
+          await database.execute('''
           CREATE TABLE sync_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id TEXT NOT NULL,
@@ -90,25 +88,25 @@ class LocalDatabase {
             last_error TEXT
           )
         ''');
-        await database.execute(
-          'CREATE INDEX idx_codes_product ON product_codes(product_id)',
-        );
-        await database.execute(
-          'CREATE INDEX idx_codes_active ON product_codes(product_id, is_active)',
-        );
-        await database.execute(
-          'CREATE INDEX idx_images_product ON product_images(product_id, sort_order)',
-        );
-        await database.execute(
-          'CREATE INDEX idx_sync_created ON sync_queue(created_at)',
-        );
-      },
-      onUpgrade: (database, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
           await database.execute(
-            "ALTER TABLE products ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'",
+            'CREATE INDEX idx_codes_product ON product_codes(product_id)',
           );
-          await database.execute('''
+          await database.execute(
+            'CREATE INDEX idx_codes_active ON product_codes(product_id, is_active)',
+          );
+          await database.execute(
+            'CREATE INDEX idx_images_product ON product_images(product_id, sort_order)',
+          );
+          await database.execute(
+            'CREATE INDEX idx_sync_created ON sync_queue(created_at)',
+          );
+        },
+        onUpgrade: (database, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await database.execute(
+              "ALTER TABLE products ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'",
+            );
+            await database.execute('''
             CREATE TABLE product_images (
               id TEXT PRIMARY KEY,
               product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -118,7 +116,7 @@ class LocalDatabase {
               created_at TEXT NOT NULL
             )
           ''');
-          await database.execute('''
+            await database.execute('''
             INSERT INTO product_images (
               id, product_id, local_path, remote_url, sort_order, created_at
             )
@@ -126,36 +124,37 @@ class LocalDatabase {
             FROM products
             WHERE image_path IS NOT NULL OR image_url IS NOT NULL
           ''');
-          await database.execute(
-            'CREATE INDEX idx_images_product '
-            'ON product_images(product_id, sort_order)',
-          );
-        }
-        if (oldVersion < 3) {
-          await database.execute(
-            'ALTER TABLE product_images ADD COLUMN source_page_url TEXT',
-          );
-          await database.execute(
-            'ALTER TABLE product_images ADD COLUMN attribution TEXT',
-          );
-          await database.execute(
-            'ALTER TABLE product_images ADD COLUMN license TEXT',
-          );
-        }
-        if (oldVersion < 4) {
-          await database.execute(
-            'ALTER TABLE products ADD COLUMN is_organic INTEGER NOT NULL DEFAULT 0',
-          );
-          await database.execute(
-            'ALTER TABLE products ADD COLUMN is_promotion INTEGER NOT NULL DEFAULT 0',
-          );
-        }
-        if (oldVersion < 5) {
-          await database.execute(
-            'ALTER TABLE product_codes ADD COLUMN display_category TEXT',
-          );
-        }
-      },
+            await database.execute(
+              'CREATE INDEX idx_images_product '
+              'ON product_images(product_id, sort_order)',
+            );
+          }
+          if (oldVersion < 3) {
+            await database.execute(
+              'ALTER TABLE product_images ADD COLUMN source_page_url TEXT',
+            );
+            await database.execute(
+              'ALTER TABLE product_images ADD COLUMN attribution TEXT',
+            );
+            await database.execute(
+              'ALTER TABLE product_images ADD COLUMN license TEXT',
+            );
+          }
+          if (oldVersion < 4) {
+            await database.execute(
+              'ALTER TABLE products ADD COLUMN is_organic INTEGER NOT NULL DEFAULT 0',
+            );
+            await database.execute(
+              'ALTER TABLE products ADD COLUMN is_promotion INTEGER NOT NULL DEFAULT 0',
+            );
+          }
+          if (oldVersion < 5) {
+            await database.execute(
+              'ALTER TABLE product_codes ADD COLUMN display_category TEXT',
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -326,12 +325,12 @@ class LocalDatabase {
       'SELECT COUNT(*) AS count FROM sync_queue WHERE product_id = ?',
       [productId],
     );
-    return Sqflite.firstIntValue(result)! > 0;
+    return firstIntValue(result)! > 0;
   }
 
   Future<int> pendingCount() async {
     final result = await _db.rawQuery('SELECT COUNT(*) FROM sync_queue');
-    return Sqflite.firstIntValue(result) ?? 0;
+    return firstIntValue(result) ?? 0;
   }
 
   Future<void> completeQueueEntry(int id) =>

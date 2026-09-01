@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -11,8 +10,11 @@ import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await WakelockPlus.enable();
+  try {
+    await WakelockPlus.enable();
+  } catch (_) {
+    // Nicht jeder Browser unterstützt die Screen Wake Lock API.
+  }
 
   SupabaseClient? supabaseClient;
   if (hasSupabaseConfiguration) {
@@ -52,7 +54,9 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) WakelockPlus.enable();
+    if (state == AppLifecycleState.resumed) {
+      WakelockPlus.enable().catchError((_) {});
+    }
   }
 
   @override

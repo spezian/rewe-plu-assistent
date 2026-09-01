@@ -1,9 +1,7 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as path;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/product.dart';
+import '../utils/data_image.dart';
 import 'local_database.dart';
 
 class SyncReport {
@@ -132,29 +130,28 @@ class SyncService {
     for (final imageMap in imageMaps) {
       String? remoteUrl = imageMap['remote_url'] as String?;
       final localPath = imageMap['local_path'] as String?;
-      if (localPath != null && localPath.isNotEmpty) {
-        final file = File(localPath);
-        if (await file.exists()) {
-          final extension = path.extension(localPath).isEmpty
-              ? '.jpg'
-              : path.extension(localPath).toLowerCase();
-          final remotePath =
-              '$userId/${entry.productId}/${imageMap['id']}$extension';
-          await client.storage
-              .from('product-images')
-              .uploadBinary(
-                remotePath,
-                await file.readAsBytes(),
-                fileOptions: const FileOptions(upsert: true),
-              );
-          remoteUrl = client.storage
-              .from('product-images')
-              .getPublicUrl(remotePath);
-          await _database.updateRemoteImageUrl(
-            imageMap['id'] as String,
-            remoteUrl,
-          );
-        }
+      final localImage = decodeDataImage(localPath);
+      if (localImage != null) {
+        final remotePath =
+            '$userId/${entry.productId}/${imageMap['id']}'
+            '${localImage.fileExtension}';
+        await client.storage
+            .from('product-images')
+            .uploadBinary(
+              remotePath,
+              localImage.bytes,
+              fileOptions: FileOptions(
+                upsert: true,
+                contentType: localImage.mimeType,
+              ),
+            );
+        remoteUrl = client.storage
+            .from('product-images')
+            .getPublicUrl(remotePath);
+        await _database.updateRemoteImageUrl(
+          imageMap['id'] as String,
+          remoteUrl,
+        );
       }
       remoteImages.add(
         imageMap

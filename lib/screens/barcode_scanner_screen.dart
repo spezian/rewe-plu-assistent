@@ -11,7 +11,6 @@ class BarcodeScannerScreen extends StatefulWidget {
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   final _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
-    autoZoom: true,
   );
   bool _handled = false;
 
@@ -29,13 +28,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         foregroundColor: Colors.white,
         backgroundColor: Colors.black,
         title: const Text('Barcode scannen'),
-        actions: [
-          IconButton(
-            tooltip: 'Taschenlampe',
-            onPressed: _controller.toggleTorch,
-            icon: const Icon(Icons.flashlight_on_outlined),
-          ),
-        ],
       ),
       body: Stack(
         fit: StackFit.expand,
