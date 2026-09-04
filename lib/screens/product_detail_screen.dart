@@ -60,12 +60,20 @@ class ProductDetailScreen extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  InkWell(
+                  GestureDetector(
                     onTap: product.images.isEmpty
                         ? null
                         : () => _openGallery(context, product, 0),
-                    borderRadius: BorderRadius.circular(12),
-                    child: ProductImage(product: product, size: 104),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: ProductImage(
+                        product: product,
+                        iconSize: 104,
+                        imageWidth: 104,
+                        imageHeight: 104,
+
+                      ),
+                    ),
                   ),
                   if (product.images.length > 1)
                     Positioned(
@@ -302,10 +310,7 @@ class _ProductImageThumbnail extends StatelessWidget {
       images: [image],
     );
     return ProductImage(
-      product: product,
-      size: 70,
-      borderRadius: BorderRadius.zero,
-    );
+      product: product,);
   }
 }
 

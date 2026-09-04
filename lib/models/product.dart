@@ -11,7 +11,7 @@ extension ProductCodeTypeX on ProductCodeType {
     ProductCodeType.plu => 'PLU',
     ProductCodeType.price => 'Preis',
     ProductCodeType.barcode => 'Barcode',
-    ProductCodeType.cashierTile => 'Bedienerkachel',
+    ProductCodeType.cashierTile => 'Kassenkachel',
   };
 
   String get inputHint => switch (this) {

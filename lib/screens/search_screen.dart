@@ -267,7 +267,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                   InkWell(
                     onTap: product.images.isEmpty ? null : onOpenImages,
                     borderRadius: BorderRadius.circular(9),
-                    child: ProductImage(product: product, size: 48),
+                    child: ProductImage(product: product),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
