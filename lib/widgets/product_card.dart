@@ -126,7 +126,7 @@ class ProductCard extends StatelessWidget {
                         ? const Color(0xFFFFF0EA)
                         : product.isOrganic
                         ? const Color(0xFFF0F8EF)
-                        : null,
+                        : Colors.white,
                     borderRadius: BorderRadius.only(topRight: Radius.circular(12.0), bottomRight: Radius.circular(12.0)),
                     child: InkWell(
                       borderRadius: BorderRadius.only(topRight: Radius.circular(12.0), bottomRight: Radius.circular(12.0)),
@@ -153,7 +153,7 @@ class ProductCard extends StatelessWidget {
                                   Icon(
                                     Icons.push_pin,
                                     size: 18,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Color(0xffcc071e),
                                     semanticLabel: 'Angepinnt',
                                   ),
                                 GestureDetector(
@@ -248,82 +248,86 @@ class _CodeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final canShow = code.type.canShowBarcode;
     return Material(
-      color: canShow
-          ? Theme.of(context).colorScheme.primaryContainer
-          : Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: canShow ? onPressed : null,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (code.type == ProductCodeType.cashierTile) ...[
-                      Text(
-                        code.displayValue,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall
-                            ?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [
-                            FontFeature.tabularFigures(),
-                          ],
+      color: Colors.white,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 1.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: InkWell(
+          onTap: canShow ? onPressed : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (code.type == ProductCodeType.cashierTile) ...[
+                        Text(
+                          code.displayValue,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
                         ),
-                      ),
-                    ] else if (code.type == ProductCodeType.barcode) ...[
-                      Text(
-                        'Barcode: Bitte scannen!',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [
-                            FontFeature.tabularFigures(),
-                          ],
+                      ] else if (code.type == ProductCodeType.barcode) ...[
+                        Text(
+                          'Barcode: Bitte scannen!',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
                         ),
-                      ),
-                    ] else ...[
-                      Text(
-                        '${code.type.label}: ${code.displayValue}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [
-                            FontFeature.tabularFigures(),
-                          ],
+                      ] else ...[
+                        Text(
+                          '${code.type.label}: ${code.displayValue}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
+                      if (code.secondaryDisplay case final secondary?)
+                        Text(
+                          secondary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
                     ],
-                    if (code.secondaryDisplay case final secondary?)
-                      Text(
-                        secondary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                  ],
+                  ),
                 ),
-              ),
-              if (code.type == ProductCodeType.cashierTile) ...[
-                const SizedBox(width: 7),
-                const Icon(Icons.dashboard_customize_outlined, size: 20),
+                if (code.type == ProductCodeType.cashierTile) ...[
+                  const SizedBox(width: 7),
+                  const Icon(Icons.dashboard_customize_outlined, size: 20),
+                ],
+                if (canShow) ...[
+                  const SizedBox(width: 7),
+                  const Icon(Icons.barcode_reader, size: 20),
+                ],
               ],
-              if (canShow) ...[
-                const SizedBox(width: 7),
-                const Icon(Icons.barcode_reader, size: 20),
-              ],
-            ],
+            ),
           ),
         ),
       ),

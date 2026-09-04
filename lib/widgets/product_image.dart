@@ -61,13 +61,10 @@ class ProductImage extends StatelessWidget {
     return SizedBox(
       width: imageWidth,
       height: imageHeight,
-      child: ColoredBox(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        child: Icon(
-          icon,
-          size: iconSize * .46,
-          color: Theme.of(context).colorScheme.onSecondaryContainer,
-        ),
+      child: Icon(
+        icon,
+        size: iconSize * .46,
+        color: Color(0xffcc071e),
       ),
     );
   }
