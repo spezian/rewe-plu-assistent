@@ -167,13 +167,15 @@ class ProductCard extends StatelessWidget {
                             ),
                             Row(
                               children: [
-                                Text(
-                                  product.aliases.isEmpty
-                                      ? product.category
-                                      : '${product.category} · auch: ${product.aliases.join(', ')}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall
+                                Flexible(
+                                  child: Text(
+                                    product.aliases.isEmpty
+                                        ? product.category
+                                        : '${product.category} · auch: ${product.aliases.join(', ')}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                  ),
                                 ),
                               ],
                             ),

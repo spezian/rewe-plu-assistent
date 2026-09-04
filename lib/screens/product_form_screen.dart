@@ -528,7 +528,7 @@ class _CodeDraft {
 
   String get normalizedValue {
     final raw = valueController.text.trim();
-    if (type != ProductCodeType.price) return raw.replaceAll(' ', '');
+    if (type != ProductCodeType.price && type != ProductCodeType.cashierTile) return raw.replaceAll(' ', '');
     final price = double.tryParse(raw.replaceAll(',', '.'));
     return price == null ? raw.replaceAll(',', '.') : price.toStringAsFixed(2);
   }
