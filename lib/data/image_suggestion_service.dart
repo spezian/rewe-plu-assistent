@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/app_constants.dart';
@@ -37,7 +38,7 @@ class ImageSuggestionService {
       headers: {
         'Authorization': 'Client-ID $unsplashAccessKey',
         'Accept-Version': 'v1',
-        'User-Agent': userAgent,
+        if (!kIsWeb) 'User-Agent': userAgent,
       },
     );
 

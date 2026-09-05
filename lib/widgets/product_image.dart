@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
+import '../data/local_image_storage.dart';
 import '../models/product.dart';
 
 class ProductImage extends StatelessWidget {
@@ -17,15 +16,17 @@ class ProductImage extends StatelessWidget {
   final double iconSize;
   final double? imageWidth;
   final double? imageHeight;
+  static const _imageStorage = LocalImageStorage();
 
   @override
   Widget build(BuildContext context) {
     final localPath = product.imagePath;
     final imageUrl = product.imageUrl;
     Widget child;
-    if (localPath != null && File(localPath).existsSync()) {
-      child = Image.file(
-        File(localPath),
+    final localProvider = _imageStorage.providerFor(localPath);
+    if (localProvider != null) {
+      child = Image(
+        image: localProvider,
         fit: BoxFit.cover,
         width: imageWidth,
         height: imageHeight,

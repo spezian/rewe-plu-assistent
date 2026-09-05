@@ -160,10 +160,12 @@ class _SyncButton extends StatelessWidget {
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('Cloud-Sync nicht eingerichtet'),
-                content: const Text(
-                  'Die App speichert sicher offline. Für Supabase die URL und den '
-                  'Anon-Key beim Start per --dart-define übergeben. Die genaue '
-                  'Einrichtung steht in der README.',
+                content: Text(
+                  supabaseConfigurationError ??
+                      'Die App speichert sicher offline. Für Supabase die URL '
+                          'und den Publishable Key beim Start per '
+                          '--dart-define übergeben. Die genaue Einrichtung '
+                          'steht in der README.',
                 ),
                 actions: [
                   TextButton(

@@ -43,6 +43,7 @@ dependencies:
   barcode_widget: ^2.0.4
   screen_brightness: ^2.1.11
   wakelock_plus: ^1.7.0
+  sqflite_common_ffi_web: ^1.1.2
   connectivity_plus: ^7.3.1
   uuid: ^4.6.0
   http: ^1.6.0
