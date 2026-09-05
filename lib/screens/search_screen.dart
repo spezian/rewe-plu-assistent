@@ -65,6 +65,14 @@ class _SearchScreenState extends State<SearchScreen>
             onChanged: (value) => setState(() => _query = value),
             decoration: InputDecoration(
               hintText: 'Produkt, PLU oder Barcode',
+              hintStyle: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                    color: Colors.grey[600],
+                  ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              fillColor: Colors.grey[200]!,
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _query.isEmpty
                   ? null
@@ -267,7 +275,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                   InkWell(
                     onTap: product.images.isEmpty ? null : onOpenImages,
                     borderRadius: BorderRadius.circular(9),
-                    child: ProductImage(product: product),
+                    child: ProductImage(product: product, iconSize: 48, imageHeight: 48, imageWidth: 48,),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

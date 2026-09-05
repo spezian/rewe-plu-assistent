@@ -146,6 +146,8 @@ class ProductCard extends StatelessWidget {
                               children: [
                                 Text(
                                   product.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.titleMedium,
                                 ),
                                 Spacer(),
@@ -180,7 +182,28 @@ class ProductCard extends StatelessWidget {
                               ],
                             ),
                             Spacer(),
-                            _CodeButton(code: code!, onPressed: onShowCode),
+                            if (code != null) _CodeButton(code: code, onPressed: onShowCode)
+                            else
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.black54, width: 1.5),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                          "Produkt veraltet!",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          color: Colors.black54
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
                           ],
                         ),
                       ),

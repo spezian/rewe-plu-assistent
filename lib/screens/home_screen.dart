@@ -11,6 +11,14 @@ import 'product_form_screen.dart';
 import 'product_gallery_screen.dart';
 import 'search_screen.dart';
 
+class Destination {
+  const Destination(this.index, this.title, this.navBarName, this.icon);
+  final int index;
+  final String navBarName;
+  final String title;
+  final IconData icon;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -19,6 +27,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const List<Destination> allDestinations = <Destination>[
+    Destination(0, 'Kassenmeister', 'Produkte', Icons.list_alt_outlined),
+    Destination(1, 'Suche', 'Suche', Icons.search),
+    Destination(1, 'Kassenbelegung', 'Belegung', Icons.work_history_outlined),
+  ];
+
   int _selectedTab = 0;
 
   @override
@@ -29,12 +43,25 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(
-            title: Text(_selectedTab == 0 ? 'PLU Assistent' : 'Schnellsuche'),
+            title: Text(allDestinations[_selectedTab].title),
+            backgroundColor: Colors.white,
+            scrolledUnderElevation: 0,
             actions: [
-              _SyncButton(controller: controller),
-              if (controller.isSyncConfigured)
-                _AccountButton(controller: controller),
-              const SizedBox(width: 4),
+              Container(
+                decoration: BoxDecoration(
+                  color: reweRed,
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                margin: const EdgeInsets.only(right: 8.0),
+                child: Row(
+                  children: [
+                    _SyncButton(controller: controller),
+                    if (controller.isSyncConfigured)
+                      _AccountButton(controller: controller),
+                    const SizedBox(width: 4),
+                  ],
+                ),
+              )
             ],
           ),
           body: IndexedStack(
@@ -42,33 +69,48 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const ProductListPage(),
               SearchScreen(isActive: _selectedTab == 1),
+              Container(color: Colors.white)
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: FloatingActionButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const ProductFormScreen(),
               ),
             ),
-            icon: const Icon(Icons.add),
-            label: const Text('Produkt'),
+            backgroundColor: reweRed,
+            child: const Icon(Icons.add, color: Colors.white,),
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedTab,
-            onDestinationSelected: (index) =>
-                setState(() => _selectedTab = index),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.list_alt_outlined),
-                selectedIcon: Icon(Icons.list_alt),
-                label: 'Produkte',
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.search),
-                selectedIcon: Icon(Icons.manage_search),
-                label: 'Suche',
-              ),
-            ],
+            ),
+            child: NavigationBar(
+              selectedIndex: _selectedTab,
+              onDestinationSelected: (index) =>
+                  setState(() => _selectedTab = index),
+              backgroundColor: Colors.white,
+              indicatorColor: Colors.grey[200]!,
+              labelTextStyle: WidgetStateProperty.fromMap({
+                WidgetState.selected: Theme.of(context).textTheme.labelMedium!.copyWith(color: reweRed),
+                WidgetState.any: Theme.of(context).textTheme.labelMedium!.copyWith(color: Colors.black)
+              }),
+              destinations: allDestinations.map<NavigationDestination>((
+                  Destination destination,
+                  ) {
+                return NavigationDestination(
+                  icon: Icon(destination.icon, color: Colors.black),
+                  selectedIcon: Icon(destination.icon, color: reweRed),
+                  label: destination.navBarName,
+                );
+              }).toList(),
+            ),
           ),
         );
       },
@@ -87,8 +129,11 @@ class _SyncButton extends StatelessWidget {
       return const Padding(
         padding: EdgeInsets.all(14),
         child: SizedBox.square(
-          dimension: 22,
-          child: CircularProgressIndicator(strokeWidth: 2.5),
+          dimension: 20,
+          child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+            color: Colors.white,
+          ),
         ),
       );
     }
@@ -149,7 +194,7 @@ class _SyncButton extends StatelessWidget {
               : isError
               ? Icons.cloud_off
               : Icons.cloud_done_outlined,
-          color: isError ? Theme.of(context).colorScheme.error : null,
+          color: Colors.white,
         ),
       ),
     );
@@ -167,6 +212,7 @@ class _AccountButton extends StatelessWidget {
       tooltip: controller.isAuthenticated
           ? controller.currentUserEmail ?? 'Cloud-Konto'
           : 'Cloud anmelden',
+      color: Colors.white,
       onPressed: () async {
         if (!controller.isAuthenticated) {
           await _showCloudLogin(context, controller);
