@@ -3,7 +3,7 @@
 Eine Flutter-App für das schnelle Finden von PLUs, Kassenpreise und schwer
 scanbare Produktbarcodes. Die App funktioniert offline-first: Änderungen landen
 sofort in SQLite und werden bei einer Verbindung über eine lokale Warteschlange
-mit Supabase abgeglichen.
+mit Supabase abgeglichen..
 
 ## Funktionen
 
