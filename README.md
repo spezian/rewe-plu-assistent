@@ -52,13 +52,17 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
    benötigte Storage-Lesepolicy idempotent.
 3. Unter **Authentication → Users → Add user** ein gemeinsames Konto mit
    E-Mail und einem starken Zugangspasswort anlegen.
+4. Unter **Project Settings → API Keys** den **Publishable Key** kopieren. Niemals
+   einen `sb_secret_...`- oder `service_role`-Key in die App einbauen. Falls ein
+   Secret-Key bereits für einen Web-Build verwendet wurde, diesen in Supabase
+   widerrufen/rotieren.
 
 ## Run/Build
 
 ```bash
 flutter run \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
 
@@ -67,9 +71,12 @@ Für ein Release-APK/Debug-APK gilt dasselbe:
 ```bash
 flutter build apk \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
+
+Der ältere `SUPABASE_ANON_KEY` bleibt für bestehende Installationen kompatibel,
+sofern er tatsächlich den öffentlichen Legacy-Anon-Key enthält.
 
 # Lizenz
 Das Projekt ist lizenziert unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.
