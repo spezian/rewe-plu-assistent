@@ -113,6 +113,7 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
                   color: Colors.white,
                 ),
             checkmarkColor: Colors.white,
+            avatarBoxConstraints: BoxConstraints.expand(width: 24, height: 24)
           ),
         ),
         home: const HomeScreen(),
