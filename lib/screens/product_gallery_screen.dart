@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/local_image_storage.dart';
 import '../models/product.dart';
 
 class ProductGalleryScreen extends StatefulWidget {
@@ -22,6 +21,7 @@ class ProductGalleryScreen extends StatefulWidget {
 }
 
 class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
+  static const _imageStorage = LocalImageStorage();
   late final PageController _pageController;
   late int _currentIndex;
 
@@ -114,8 +114,9 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
 
   Widget _fullImage(ProductImageData image) {
     final localPath = image.localPath;
-    if (localPath != null && File(localPath).existsSync()) {
-      return Image.file(File(localPath), fit: BoxFit.contain);
+    final localProvider = _imageStorage.providerFor(localPath);
+    if (localProvider != null) {
+      return Image(image: localProvider, fit: BoxFit.contain);
     }
     final remoteUrl = image.remoteUrl;
     if (remoteUrl != null && remoteUrl.isNotEmpty) {

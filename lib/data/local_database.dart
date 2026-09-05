@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/product.dart';
+import 'database_platform.dart';
 
 class SyncQueueEntry {
   const SyncQueueEntry({
@@ -26,10 +26,7 @@ class LocalDatabase {
 
   Future<void> initialize() async {
     if (_database != null) return;
-    final databasePath = path.join(
-      await getDatabasesPath(),
-      'rewe_plu_assistent.db',
-    );
+    final databasePath = await prepareDatabasePath('rewe_plu_assistent.db');
     _database = await openDatabase(
       databasePath,
       version: 5,

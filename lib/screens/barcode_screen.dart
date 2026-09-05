@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
@@ -26,6 +27,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     unawaited(
       ScreenBrightness.instance
           .setApplicationScreenBrightness(1)
@@ -35,11 +37,13 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
   @override
   void dispose() {
-    unawaited(
-      ScreenBrightness.instance.resetApplicationScreenBrightness().catchError(
-        (_) {},
-      ),
-    );
+    if (!kIsWeb) {
+      unawaited(
+        ScreenBrightness.instance.resetApplicationScreenBrightness().catchError(
+          (_) {},
+        ),
+      );
+    }
     super.dispose();
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,7 +14,7 @@ import 'screens/home_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await WakelockPlus.enable();
+  await _enableWakelock();
 
   SupabaseClient? supabaseClient;
   if (hasSupabaseConfiguration) {
@@ -34,6 +36,15 @@ Future<void> main() async {
   runApp(RewePluApp(controller: controller));
 }
 
+Future<void> _enableWakelock() async {
+  try {
+    await WakelockPlus.enable();
+  } catch (_) {
+    // Browsers may reject wake locks outside a secure/visible context. The app
+    // should still start, and the lifecycle callback will try again on resume.
+  }
+}
+
 class RewePluApp extends StatefulWidget {
   const RewePluApp({required this.controller, super.key});
 
@@ -52,7 +63,7 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) WakelockPlus.enable();
+    if (state == AppLifecycleState.resumed) unawaited(_enableWakelock());
   }
 
   @override

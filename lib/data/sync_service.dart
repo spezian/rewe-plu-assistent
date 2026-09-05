@@ -1,9 +1,7 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as path;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/product.dart';
+import 'local_image_storage.dart';
 import 'local_database.dart';
 
 class SyncReport {
@@ -18,6 +16,7 @@ class SyncService {
   SyncService(this._database, this._client);
 
   final LocalDatabase _database;
+  final LocalImageStorage _imageStorage = const LocalImageStorage();
   final SupabaseClient? _client;
   bool _isRunning = false;
 
@@ -133,18 +132,16 @@ class SyncService {
       String? remoteUrl = imageMap['remote_url'] as String?;
       final localPath = imageMap['local_path'] as String?;
       if (localPath != null && localPath.isNotEmpty) {
-        final file = File(localPath);
-        if (await file.exists()) {
-          final extension = path.extension(localPath).isEmpty
-              ? '.jpg'
-              : path.extension(localPath).toLowerCase();
+        final bytes = await _imageStorage.readBytes(localPath);
+        if (bytes != null) {
+          final extension = _imageStorage.extensionFor(localPath);
           final remotePath =
               '$userId/${entry.productId}/${imageMap['id']}$extension';
           await client.storage
               .from('product-images')
               .uploadBinary(
                 remotePath,
-                await file.readAsBytes(),
+                bytes,
                 fileOptions: const FileOptions(upsert: true),
               );
           remoteUrl = client.storage

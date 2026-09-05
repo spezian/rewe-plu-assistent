@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../app_scope.dart';
 import '../core/app_constants.dart';
 import '../data/image_suggestion_service.dart';
+import '../data/local_image_storage.dart';
 import '../models/product.dart';
 import 'barcode_scanner_screen.dart';
 import 'internet_image_search_screen.dart';
@@ -715,6 +714,7 @@ class _ImagesEditor extends StatelessWidget {
   final VoidCallback onSuggest;
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onOpen;
+  static const _imageStorage = LocalImageStorage();
 
   @override
   Widget build(BuildContext context) {
@@ -822,8 +822,9 @@ class _ImagesEditor extends StatelessWidget {
   }
 
   Widget _imageWidget(BuildContext context, ProductImageData image) {
-    if (image.localPath != null && File(image.localPath!).existsSync()) {
-      return Image.file(File(image.localPath!), fit: BoxFit.cover);
+    final localProvider = _imageStorage.providerFor(image.localPath);
+    if (localProvider != null) {
+      return Image(image: localProvider, fit: BoxFit.cover);
     }
     if (image.remoteUrl != null && image.remoteUrl!.isNotEmpty) {
       return Image.network(image.remoteUrl!, fit: BoxFit.cover);

@@ -10,7 +10,8 @@ mit Supabase abgeglichen.
 - kompakte Produktliste mit direkt sichtbarem aktuellem PLU, Preis, Barcode
   oder einer Bedienerkachel samt Kategoriepfad (z. B. `Obst > Exoten`)
 - auffällige, kombinierbare Kennzeichnungen für Bio- und Aktionsprodukte
-- Barcode-Vollansicht für Barcode oder PLU mit maximaler App-Helligkeit
+- Barcode-Vollansicht für Barcode oder PLU mit maximaler App-Helligkeit auf
+  unterstützten Geräten
 - Wischen zum Anpinnen/Entpinnen, langes Drücken für Details
 - fehlertolerante Suche nach Name, alternativen Namen, Kategorie, PLU und Barcode
 - klar abgetrennter Bereich für veraltete Codes und vollständig veraltete Produkte
@@ -20,7 +21,7 @@ mit Supabase abgeglichen.
   Unsplash
 - Barcode-Erfassung per Kamera
 - Offline-Datenbank, Sync-Warteschlange und passwortgeschützte Synchronisation
-- dauerhaft aktivierter Bildschirm-Wakelock
+- dauerhaft aktivierter Bildschirm-Wakelock, auch im Web
 
 ## Lokal starten
 
@@ -28,6 +29,17 @@ mit Supabase abgeglichen.
 flutter pub get
 flutter run
 ```
+
+Für die Browser-Version:
+
+```bash
+flutter run -d chrome
+flutter build web
+```
+
+Browser können die Bildschirmhelligkeit nicht verändern. Der Wakelock wird
+hingegen auch im Web aktiviert (auf HTTPS beziehungsweise localhost). Die
+Offline-Datenbank wird dort im Browserspeicher abgelegt.
 
 Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
 
