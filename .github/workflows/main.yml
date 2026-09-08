@@ -11,6 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2 # Only works with v2
       - uses: subosito/flutter-action@v1
-      - uses: spezian/flutter-gh-pages@master
+      - uses: spezian/flutter-gh-pages@main
         with:
           customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
