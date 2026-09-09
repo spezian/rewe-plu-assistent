@@ -27,6 +27,9 @@ const supabaseLegacyAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 const unsplashAccessKey = String.fromEnvironment('UNSPLASH_ACCESS_KEY');
 
 const reweRed = Color(0xffcc071e);
+const reweOnTeal = Color(0xff007c72);
+const reweTeal = Color(0xffaacdc9);
+const reweTealContainer = Color(0xffe5f1ef);
 
 String get supabaseClientKey => supabasePublishableKey.trim().isNotEmpty
     ? supabasePublishableKey.trim()

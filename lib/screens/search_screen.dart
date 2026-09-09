@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:rewe_plu_assistent/core/app_constants.dart';
 
 import '../app_scope.dart';
 import '../models/product.dart';
 import '../utils/product_search.dart';
+import '../widgets/product_badge.dart';
 import '../widgets/product_card.dart';
 import '../widgets/product_image.dart';
 import 'barcode_screen.dart';
@@ -261,69 +263,88 @@ class _ObsoleteProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Theme.of(context).colorScheme.errorContainer
-          .withValues(alpha: .42),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.black38, width: 1),
+      ),
       child: InkWell(
         onLongPress: onOpenDetails,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8.0,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkWell(
+                  GestureDetector(
                     onTap: product.images.isEmpty ? null : onOpenImages,
-                    borderRadius: BorderRadius.circular(9),
-                    child: ProductImage(product: product, iconSize: 48, imageHeight: 48, imageWidth: 48,),
+                    child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(12.0)
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0),
+                          child: ProductImage(product: product, iconSize: 48, imageHeight: 48, imageWidth: 48,)
+                        )
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      product.name,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (product.aliases.isNotEmpty)
+                          Text(
+                            'Auch: ${product.aliases.join(', ')}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            ProductBadge(
+                              label: product.category,
+                              icon: Icons.category_outlined,
+                              background: Colors.grey,
+                            ),
+                            if (product.isOrganic)
+                              ProductBadge.bio(),
+                            if (product.isPromotion)
+                              ProductBadge.sale(),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Details öffnen',
                     onPressed: onOpenDetails,
                     icon: const Icon(Icons.info_outline),
                   ),
                 ],
               ),
-              if (product.aliases.isNotEmpty)
-                Text(
-                  'Auch: ${product.aliases.join(', ')}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              if (product.isOrganic || product.isPromotion) ...[
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    if (product.isOrganic)
-                      const Chip(
-                        avatar: Icon(Icons.eco, size: 15),
-                        label: Text('BIO'),
-                        backgroundColor: Color(0xFFCDECCF),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    if (product.isPromotion)
-                      const Chip(
-                        avatar: Icon(Icons.local_offer, size: 15),
-                        label: Text('AKTION'),
-                        backgroundColor: Color(0xFFFFD8CC),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-              ],
-              const Divider(),
               for (final code in product.retiredCodes)
                 ListTile(
                   dense: true,
-                  contentPadding: EdgeInsets.zero,
+                  tileColor: reweTealContainer,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    side: BorderSide(
+                      color: reweTeal,
+                      width: 1.0,
+                    )
+                  ),
+                  textColor: reweOnTeal,
                   onTap: code.type.canShowBarcode
                       ? () => onShowCode(code)
                       : null,
@@ -332,6 +353,8 @@ class _ObsoleteProductCard extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       decoration: TextDecoration.lineThrough,
+                      decorationColor: reweOnTeal,
+                      decorationThickness: 2,
                     ),
                   ),
                   subtitle:
@@ -343,7 +366,12 @@ class _ObsoleteProductCard extends StatelessWidget {
                           ].join(' · '),
                         )
                       : null,
-                  trailing: IconButton.filledTonal(
+                  trailing: IconButton.filled(
+                    style: IconButton.styleFrom(
+                      backgroundColor: reweTeal,
+                      foregroundColor: reweOnTeal,
+                      visualDensity: VisualDensity.compact
+                    ),
                     tooltip: 'Diesen Code reaktivieren',
                     onPressed: () => onReactivate(code),
                     icon: const Icon(Icons.restore),
@@ -378,7 +406,7 @@ class _SectionHeader extends StatelessWidget {
             Icon(
               Icons.history,
               size: 20,
-              color: Theme.of(context).colorScheme.error,
+              color: reweRed,
             ),
             const SizedBox(width: 7),
           ],
@@ -412,9 +440,13 @@ class _RetiredCodeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Theme.of(context).colorScheme.errorContainer
-          .withValues(alpha: .42),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.black38, width: 1),
+      ),
       child: InkWell(
+        onTap: onShowCode,
         onLongPress: onOpenDetails,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
@@ -424,29 +456,56 @@ class _RetiredCodeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      hit.product.name,
-                      style: Theme.of(context).textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                    Row(
+                      spacing: 8.0,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            hit.product.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ),
+                        if (hit.product.isOrganic)
+                          ProductBadge.bio(),
+                        if (hit.product.isPromotion)
+                          ProductBadge.sale(),
+                      ],
                     ),
                     const SizedBox(height: 5),
-                    InkWell(
+                    GestureDetector(
                       onTap: hit.code.type.canShowBarcode ? onShowCode : null,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${hit.code.type.label}: ${hit.code.displayValue}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              decoration: TextDecoration.lineThrough,
-                            ),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: BoxBorder.all(
+                            color: reweTeal,
+                            width: 1.0
                           ),
-                          if (hit.code.type.canShowBarcode) ...[
-                            const SizedBox(width: 7),
-                            const Icon(Icons.barcode_reader, size: 19),
-                          ],
-                        ],
+                          color: reweTealContainer
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${hit.code.type.label}: ${hit.code.displayValue}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  decoration: TextDecoration.lineThrough,
+                                  color: reweOnTeal,
+                                  decorationThickness: 2.0,
+                                  decorationColor: reweOnTeal,
+                                ),
+                              ),
+                              if (hit.code.type.canShowBarcode) ...[
+                                const SizedBox(width: 7),
+                                const Icon(Icons.barcode_reader, size: 19, color: reweOnTeal,),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                     if (hit.code.note.isNotEmpty)
@@ -468,6 +527,10 @@ class _RetiredCodeCard extends StatelessWidget {
                 ),
               ),
               IconButton.filledTonal(
+                style: IconButton.styleFrom(
+                    backgroundColor: reweTealContainer,
+                    foregroundColor: reweOnTeal,
+                ),
                 tooltip: 'Diesen Code reaktivieren',
                 onPressed: onReactivate,
                 icon: const Icon(Icons.restore),

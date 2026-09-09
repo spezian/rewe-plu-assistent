@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:rewe_plu_assistent/core/app_constants.dart';
+import 'package:rewe_plu_assistent/widgets/product_badge.dart';
 
 import '../models/product.dart';
 import 'product_image.dart';
@@ -79,17 +81,9 @@ class ProductCard extends StatelessWidget {
                                   runSpacing: 4,
                                   children: [
                                     if (product.isOrganic)
-                                      _ProductBadge(
-                                        label: 'BIO',
-                                        icon: Icons.eco,
-                                        background: Colors.green[900]!,
-                                      ),
+                                      ProductBadge.bio(),
                                     if (product.isPromotion)
-                                      const _ProductBadge(
-                                        label: 'AKTION',
-                                        icon: Icons.local_offer,
-                                        background: Colors.red,
-                                      ),
+                                      ProductBadge.sale(),
                                   ],
                                 ),
                               ),
@@ -219,50 +213,6 @@ class ProductCard extends StatelessWidget {
   }
 }
 
-class _ProductBadge extends StatelessWidget {
-  const _ProductBadge({
-    required this.label,
-    required this.icon,
-    required this.background,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 12, color: Colors.white),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CodeButton extends StatelessWidget {
   const _CodeButton({required this.code, required this.onPressed});
 
@@ -372,15 +322,19 @@ class _SwipeBackground extends StatelessWidget {
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: 22),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
+        color: reweTealContainer,
         borderRadius: BorderRadius.circular(12),
+        border: BoxBorder.all(
+          color: reweTeal,
+          width: 1,
+        )
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin),
+          Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin, color: reweOnTeal,),
           const SizedBox(width: 8),
-          Text(isPinned ? 'Lösen' : 'Anpinnen'),
+          Text(isPinned ? 'Lösen' : 'Anpinnen', style: Theme.of(context).textTheme.labelLarge!.copyWith(color: reweOnTeal),),
         ],
       ),
     );

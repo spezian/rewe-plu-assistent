@@ -127,9 +127,9 @@ class _SyncButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (controller.syncState == AppSyncState.syncing) {
       return const Padding(
-        padding: EdgeInsets.all(14),
+        padding: EdgeInsets.only(left: 16, right: 10),
         child: SizedBox.square(
-          dimension: 20,
+          dimension: 18,
           child: CircularProgressIndicator(
               strokeWidth: 2.5,
             color: Colors.white,
@@ -146,57 +146,60 @@ class _SyncButton extends StatelessWidget {
       label: Text(
         controller.pendingChanges > 99 ? '99+' : '${controller.pendingChanges}',
       ),
-      child: IconButton(
-        tooltip: localOnly
-            ? 'Nur lokal – Supabase nicht eingerichtet'
-            : locked
-            ? 'Cloud gesperrt – anmelden'
-            : isError
-            ? 'Sync-Fehler'
-            : 'Jetzt synchronisieren',
-        onPressed: () {
-          if (localOnly) {
-            showDialog<void>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Cloud-Sync nicht eingerichtet'),
-                content: Text(
-                  supabaseConfigurationError ??
-                      'Die App speichert sicher offline. Für Supabase die URL '
-                          'und den Publishable Key beim Start per '
-                          '--dart-define übergeben. Die genaue Einrichtung '
-                          'steht in der README.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-            );
-          } else if (locked) {
-            _showCloudLogin(context, controller);
-          } else if (isError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(controller.syncError ?? 'Sync fehlgeschlagen'),
-              ),
-            );
-            controller.syncNow();
-          } else {
-            controller.syncNow();
-          }
-        },
-        icon: Icon(
-          localOnly
-              ? Icons.cloud_off_outlined
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4.0),
+        child: IconButton(
+          tooltip: localOnly
+              ? 'Nur lokal – Supabase nicht eingerichtet'
               : locked
-              ? Icons.lock_outline
+              ? 'Cloud gesperrt – anmelden'
               : isError
-              ? Icons.cloud_off
-              : Icons.cloud_done_outlined,
+              ? 'Sync-Fehler'
+              : 'Jetzt synchronisieren',
           color: Colors.white,
+          onPressed: () {
+            if (localOnly) {
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Cloud-Sync nicht eingerichtet'),
+                  content: Text(
+                    supabaseConfigurationError ??
+                        'Die App speichert sicher offline. Für Supabase die URL '
+                            'und den Publishable Key beim Start per '
+                            '--dart-define übergeben. Die genaue Einrichtung '
+                            'steht in der README.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            } else if (locked) {
+              _showCloudLogin(context, controller);
+            } else if (isError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(controller.syncError ?? 'Sync fehlgeschlagen'),
+                ),
+              );
+              controller.syncNow();
+            } else {
+              controller.syncNow();
+            }
+          },
+          icon: Icon(
+            localOnly
+                ? Icons.cloud_off_outlined
+                : locked
+                ? Icons.lock_outline
+                : isError
+                ? Icons.cloud_off
+                : Icons.cloud_done_outlined,
+          ),
         ),
       ),
     );
@@ -438,9 +441,12 @@ class _ProductListPageState extends State<ProductListPage>
               Padding(
                 padding: const EdgeInsets.only(right: 7),
                 child: ChoiceChip(
-                  avatar: const Icon(Icons.history, size: 18),
+                  avatar: StatefulBuilder(builder: (context, setState) {
+                    return Icon(Icons.history, size: 18, color: _category == 'Veraltet' ? Colors.white : Colors.black);
+                  }),
                   label: const Text('Veraltet'),
                   selected: _category == 'Veraltet',
+                  showCheckmark: false,
                   onSelected: (_) => setState(() => _category = 'Veraltet'),
                 ),
               ),

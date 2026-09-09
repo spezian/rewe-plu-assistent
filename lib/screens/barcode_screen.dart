@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:rewe_plu_assistent/core/app_constants.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 import '../models/product.dart';
@@ -65,17 +66,21 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
+                    color: reweTealContainer,
                     borderRadius: BorderRadius.circular(12),
+                    border: BoxBorder.all(
+                      color: reweTeal,
+                      width: 1
+                    )
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded),
+                      const Icon(Icons.warning_amber_rounded, color: reweOnTeal),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           'Achtung: Dieser Code ist als veraltet markiert.',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w700, color: reweOnTeal),
                         ),
                       ),
                     ],
