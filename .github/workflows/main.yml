@@ -19,11 +19,11 @@ jobs:
           customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
           baseHref: /rewe-plu-assistent/
   android-release-build:
-    name: android-release-build
     runs-on: ubuntu-latest
-    container: ghcr.io/niklaslehnfeld/flutter-essentials-docker:master
+    
     steps:
       - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v1
       - uses: spezian/flutter-android-build-action@main
         id: android-build
         with:
