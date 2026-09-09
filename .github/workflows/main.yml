@@ -30,7 +30,7 @@ jobs:
           customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
           release: true
       - name: Archive APK
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: ${{ steps.android-build.outputs.apk-path }}
