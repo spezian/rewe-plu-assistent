@@ -344,7 +344,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                       width: 1.0,
                     )
                   ),
-                  textColor: reweOnTeal,
+                  textColor: reweDarkTeal,
                   onTap: code.type.canShowBarcode
                       ? () => onShowCode(code)
                       : null,
@@ -353,7 +353,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       decoration: TextDecoration.lineThrough,
-                      decorationColor: reweOnTeal,
+                      decorationColor: reweDarkTeal,
                       decorationThickness: 2,
                     ),
                   ),
@@ -369,7 +369,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                   trailing: IconButton.filled(
                     style: IconButton.styleFrom(
                       backgroundColor: reweTeal,
-                      foregroundColor: reweOnTeal,
+                      foregroundColor: reweDarkTeal,
                       visualDensity: VisualDensity.compact
                     ),
                     tooltip: 'Diesen Code reaktivieren',
@@ -406,7 +406,7 @@ class _SectionHeader extends StatelessWidget {
             Icon(
               Icons.history,
               size: 20,
-              color: reweRed,
+              color: reweDarkRed,
             ),
             const SizedBox(width: 7),
           ],
@@ -494,14 +494,14 @@ class _RetiredCodeCard extends StatelessWidget {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   decoration: TextDecoration.lineThrough,
-                                  color: reweOnTeal,
+                                  color: reweDarkTeal,
                                   decorationThickness: 2.0,
-                                  decorationColor: reweOnTeal,
+                                  decorationColor: reweDarkTeal,
                                 ),
                               ),
                               if (hit.code.type.canShowBarcode) ...[
                                 const SizedBox(width: 7),
-                                const Icon(Icons.barcode_reader, size: 19, color: reweOnTeal,),
+                                const Icon(Icons.barcode_reader, size: 19, color: reweDarkTeal,),
                               ],
                             ],
                           ),
@@ -529,7 +529,7 @@ class _RetiredCodeCard extends StatelessWidget {
               IconButton.filledTonal(
                 style: IconButton.styleFrom(
                     backgroundColor: reweTealContainer,
-                    foregroundColor: reweOnTeal,
+                    foregroundColor: reweDarkTeal,
                 ),
                 tooltip: 'Diesen Code reaktivieren',
                 onPressed: onReactivate,

@@ -75,12 +75,12 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: reweOnTeal),
+                      const Icon(Icons.warning_amber_rounded, color: reweDarkTeal),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           'Achtung: Dieser Code ist als veraltet markiert.',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: reweOnTeal),
+                          style: TextStyle(fontWeight: FontWeight.w700, color: reweDarkTeal),
                         ),
                       ),
                     ],

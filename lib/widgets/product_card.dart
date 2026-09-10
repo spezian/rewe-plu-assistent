@@ -332,9 +332,9 @@ class _SwipeBackground extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin, color: reweOnTeal,),
+          Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin, color: reweDarkTeal,),
           const SizedBox(width: 8),
-          Text(isPinned ? 'Lösen' : 'Anpinnen', style: Theme.of(context).textTheme.labelLarge!.copyWith(color: reweOnTeal),),
+          Text(isPinned ? 'Lösen' : 'Anpinnen', style: Theme.of(context).textTheme.labelLarge!.copyWith(color: reweDarkTeal),),
         ],
       ),
     );

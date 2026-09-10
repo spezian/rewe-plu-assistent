@@ -90,13 +90,13 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
           scaffoldBackgroundColor: Colors.white,
           appBarTheme: const AppBarTheme(centerTitle: false),
           textSelectionTheme: TextSelectionThemeData(
-            cursorColor: reweRed,
+            cursorColor: reweDarkRed,
             selectionColor: Colors.grey[400]!,
-            selectionHandleColor: reweRed,
+            selectionHandleColor: reweDarkRed,
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
-              backgroundColor: reweRed,
+              backgroundColor: reweDarkRed,
               foregroundColor: Colors.white,
             ),
           ),
@@ -111,7 +111,7 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
           ),
           chipTheme: ChipThemeData(
             backgroundColor: reweTealContainer,
-            selectedColor: reweOnTeal,
+            selectedColor: reweDarkTeal,
             side: BorderSide(color: reweTeal, width: 1),
             labelStyle: Theme.of(context).textTheme.labelMedium!
                 .copyWith(color: Colors.black),

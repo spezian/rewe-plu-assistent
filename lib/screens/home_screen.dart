@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
             actions: [
               Container(
                 decoration: BoxDecoration(
-                  color: reweRed,
+                  color: reweDarkRed,
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 margin: const EdgeInsets.only(right: 8.0),
@@ -78,7 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (_) => const ProductFormScreen(),
               ),
             ),
-            backgroundColor: reweRed,
+            backgroundColor: reweDarkRed,
+            shape: CircleBorder(),
             child: const Icon(Icons.add, color: Colors.white,),
           ),
           bottomNavigationBar: Container(
@@ -98,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: Colors.white,
               indicatorColor: Colors.grey[200]!,
               labelTextStyle: WidgetStateProperty.fromMap({
-                WidgetState.selected: Theme.of(context).textTheme.labelMedium!.copyWith(color: reweRed),
+                WidgetState.selected: Theme.of(context).textTheme.labelMedium!.copyWith(color: reweDarkRed),
                 WidgetState.any: Theme.of(context).textTheme.labelMedium!.copyWith(color: Colors.black)
               }),
               destinations: allDestinations.map<NavigationDestination>((
@@ -106,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ) {
                 return NavigationDestination(
                   icon: Icon(destination.icon, color: Colors.black),
-                  selectedIcon: Icon(destination.icon, color: reweRed),
+                  selectedIcon: Icon(destination.icon, color: reweDarkRed),
                   label: destination.navBarName,
                 );
               }).toList(),

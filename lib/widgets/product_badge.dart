@@ -9,7 +9,7 @@ class ProductBadge extends StatelessWidget {
   });
 
   ProductBadge.bio({super.key}) : label = 'BIO', icon = Icons.eco, background = Colors.green[900]!;
-  const ProductBadge.sale({super.key}) : label = 'AKTION', icon = Icons.local_offer, background = reweRed;
+  const ProductBadge.sale({super.key}) : label = 'AKTION', icon = Icons.local_offer, background = reweDarkRed;
 
   final String label;
   final IconData icon;
