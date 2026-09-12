@@ -114,4 +114,32 @@ void main() {
     await tester.tap(find.text('Pitahaya'));
     expect(barcodeOpened, isFalse);
   });
+
+  testWidgets('deaktiviert die Wischänderung im Lesemodus', (tester) async {
+    final now = DateTime(2026, 8, 31);
+    final product = Product(
+      id: 'read-only',
+      name: 'Banane',
+      category: 'Obst',
+      createdAt: now,
+      updatedAt: now,
+      codes: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProductCard(
+            product: product,
+            onOpenDetails: () {},
+            onOpenImages: () {},
+            onShowCode: () {},
+          ),
+        ),
+      ),
+    );
+
+    final dismissible = tester.widget<Dismissible>(find.byType(Dismissible));
+    expect(dismissible.direction, DismissDirection.none);
+  });
 }

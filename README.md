@@ -3,7 +3,7 @@
 Eine Flutter-App für das schnelle Finden von PLUs, Kassenpreise und schwer
 scanbare Produktbarcodes. Die App funktioniert offline-first: Änderungen landen
 sofort in SQLite und werden bei einer Verbindung über eine lokale Warteschlange
-mit Supabase abgeglichen..
+mit Supabase abgeglichen.
 
 ## Funktionen
 
@@ -20,7 +20,11 @@ mit Supabase abgeglichen..
 - Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
   Unsplash
 - Barcode-Erfassung per Kamera
-- Offline-Datenbank, Sync-Warteschlange und passwortgeschützte Synchronisation
+- getrennte Produktbestände für mehrere Märkte
+- Marktöffnung ohne Benutzerkonten: Marktnummer plus wahlweise Lesemodus ohne
+  PIN oder Bearbeitungsmodus mit Markt-PIN
+- vollständig schreibgeschützter Lesemodus für Kassenpersonal
+- Offline-Datenbank und Sync-Warteschlange, jeweils strikt nach Markt getrennt
 - dauerhaft aktivierter Bildschirm-Wakelock, auch im Web
 
 ## Lokal starten
@@ -37,22 +41,42 @@ flutter run -d chrome
 flutter build web
 ```
 
-Browser können die Bildschirmhelligkeit nicht verändern. Der Wakelock wird
-hingegen auch im Web aktiviert (auf HTTPS beziehungsweise localhost). Die
-Offline-Datenbank wird dort im Browserspeicher abgelegt.
-
 Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
 
 ## Supabase einrichten
 
 1. Ein Supabase-Projekt erstellen.
-2. Im SQL Editor [supabase/schema.sql](supabase/schema.sql) ausführen.
+2. Unter **Authentication → Sign In / Providers** anonyme Anmeldungen
+   aktivieren. Sie dienen nur als unsichtbare Gerätesitzungen; in der App gibt
+   es keine Benutzerkonten.
+3. Im SQL Editor [supabase/schema.sql](supabase/schema.sql) ausführen.
    Bei einem bereits eingerichteten Projekt das aktualisierte Skript erneut
-   ausführen; es ergänzt Aliasse, Bedienerkacheln, Bilder und die für Bild-Upserts
-   benötigte Storage-Lesepolicy idempotent.
-3. Unter **Authentication → Users → Add user** ein gemeinsames Konto mit
-   E-Mail und einem starken Zugangspasswort anlegen.
-4. Unter **Project Settings → API Keys** den **Publishable Key** kopieren. Niemals
+   ausführen; es ergänzt die Marktzuteilung und ersetzt die alten
+   Benutzerkonto-Policies idempotent.
+4. Den ersten Markt ausschließlich im SQL Editor anlegen. Bei der Migration aus
+   der bisherigen Einzelmarkt-Version ordnet `true` alle noch nicht zugeordneten
+   Cloud-Produkte diesem Markt zu:
+
+   ```sql
+   select public.create_market(
+     '<MARKTNUMMER>',
+     '<4-BIS-8-STELLIGE-PIN>',
+     true
+   );
+   ```
+
+   Weitere Märkte werden ohne den dritten Parameter angelegt:
+
+   ```sql
+   select public.create_market(
+     '<MARKTNUMMER>',
+     '<4-BIS-8-STELLIGE-PIN>'
+   );
+   ```
+
+   Die Marktnummer wird gehasht gespeichert. Weder die App noch normale
+   Datenbankabfragen können Marktlisten, Marktnummern oder PIN-Hashes auslesen.
+5. Unter **Project Settings → API Keys** den **Publishable Key** kopieren. Niemals
    einen `sb_secret_...`- oder `service_role`-Key in die App einbauen. Falls ein
    Secret-Key bereits für einen Web-Build verwendet wurde, diesen in Supabase
    widerrufen/rotieren.
@@ -60,23 +84,20 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
 ## Run/Build
 
 ```bash
-flutter run \
+flutter run --web \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
 
-Für ein Release-APK/Debug-APK gilt dasselbe:
+Für ein Release-APK/Debug-APK gilt:
 
 ```bash
 flutter build apk \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
+  --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
-
-Der ältere `SUPABASE_ANON_KEY` bleibt für bestehende Installationen kompatibel,
-sofern er tatsächlich den öffentlichen Legacy-Anon-Key enthält.
 
 # Lizenz
 Das Projekt ist lizenziert unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.

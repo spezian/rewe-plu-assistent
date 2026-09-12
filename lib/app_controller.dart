@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'data/product_repository.dart';
+import 'models/market_session.dart';
 import 'models/product.dart';
 
 enum AppSyncState { localOnly, locked, idle, syncing, error }
@@ -25,8 +26,10 @@ class AppController extends ChangeNotifier {
   int pendingChanges = 0;
 
   bool get isSyncConfigured => repository.isSyncConfigured;
-  bool get isAuthenticated => repository.isAuthenticated;
-  String? get currentUserEmail => repository.currentUserEmail;
+  bool get hasMarketAccess => repository.hasMarketAccess;
+  bool get canEdit => repository.canEdit;
+  MarketAccessLevel? get marketAccessLevel =>
+      repository.marketSession?.accessLevel;
 
   Future<void> initialize() async {
     await repository.initialize();
@@ -34,7 +37,7 @@ class AppController extends ChangeNotifier {
     isLoading = false;
     syncState = !isSyncConfigured
         ? AppSyncState.localOnly
-        : isAuthenticated
+        : hasMarketAccess
         ? AppSyncState.idle
         : AppSyncState.locked;
     notifyListeners();
@@ -46,7 +49,7 @@ class AppController extends ChangeNotifier {
         unawaited(syncNow());
       }
     });
-    if (isAuthenticated) unawaited(syncNow());
+    if (hasMarketAccess) unawaited(syncNow());
   }
 
   Product? productById(String productId) {
@@ -60,14 +63,14 @@ class AppController extends ChangeNotifier {
     await repository.saveProduct(product);
     await _reload();
     notifyListeners();
-    if (isAuthenticated) unawaited(syncNow());
+    if (hasMarketAccess) unawaited(syncNow());
   }
 
   Future<void> deleteProduct(String productId) async {
     await repository.deleteProduct(productId);
     await _reload();
     notifyListeners();
-    if (isAuthenticated) unawaited(syncNow());
+    if (hasMarketAccess) unawaited(syncNow());
   }
 
   Future<void> togglePinned(Product product) async {
@@ -98,23 +101,34 @@ class AppController extends ChangeNotifier {
   Future<String> importImageFromUrl(String url) =>
       repository.importImageFromUrl(url);
 
-  Future<void> signIn({required String email, required String password}) async {
-    await repository.signIn(email: email, password: password);
+  Future<void> enterMarket({required String marketNumber, String? pin}) async {
+    await repository.enterMarket(marketNumber: marketNumber, pin: pin);
+    syncState = AppSyncState.idle;
+    syncError = null;
+    await _reload();
+    notifyListeners();
+    await syncNow();
+  }
+
+  Future<void> upgradeToEditor(String pin) async {
+    await repository.upgradeToEditor(pin);
     syncState = AppSyncState.idle;
     syncError = null;
     notifyListeners();
     await syncNow();
   }
 
-  Future<void> signOut() async {
-    await repository.signOut();
+  Future<void> leaveMarket() async {
+    await repository.leaveMarket();
+    _products = const [];
+    pendingChanges = 0;
     syncState = AppSyncState.locked;
     syncError = null;
     notifyListeners();
   }
 
   Future<void> syncNow() async {
-    if (!isSyncConfigured || !isAuthenticated) {
+    if (!isSyncConfigured || !hasMarketAccess) {
       if (isSyncConfigured) syncState = AppSyncState.locked;
       notifyListeners();
       return;

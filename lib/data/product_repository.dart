@@ -2,6 +2,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/product.dart';
+import '../models/market_session.dart';
 import 'local_image_storage.dart';
 import 'local_database.dart';
 import 'sync_service.dart';
@@ -15,24 +16,35 @@ class ProductRepository {
   late final SyncService _sync = SyncService(_database, supabaseClient);
 
   bool get isSyncConfigured => _sync.isConfigured;
-  bool get isAuthenticated => _sync.isAuthenticated;
-  String? get currentUserEmail => _sync.currentUserEmail;
+  bool get hasMarketAccess => _sync.hasMarketAccess;
+  bool get canEdit => _sync.canEdit;
+  MarketSession? get marketSession => _sync.marketSession;
 
-  Future<void> initialize() => _database.initialize();
+  Future<void> initialize() async {
+    await _database.initialize();
+    await _sync.initialize();
+  }
 
   Future<List<Product>> getProducts() => _database.getProducts();
 
-  Future<void> saveProduct(Product product) => _database.saveProduct(product);
+  Future<void> saveProduct(Product product) {
+    _requireEditor();
+    return _database.saveProduct(product);
+  }
 
-  Future<void> deleteProduct(String productId) =>
-      _database.deleteProduct(productId);
+  Future<void> deleteProduct(String productId) {
+    _requireEditor();
+    return _database.deleteProduct(productId);
+  }
 
   Future<SyncReport> synchronize() => _sync.synchronize();
 
-  Future<void> signIn({required String email, required String password}) =>
-      _sync.signIn(email: email, password: password);
+  Future<void> enterMarket({required String marketNumber, String? pin}) =>
+      _sync.enterMarket(marketNumber: marketNumber, pin: pin);
 
-  Future<void> signOut() => _sync.signOut();
+  Future<void> upgradeToEditor(String pin) => _sync.upgradeToEditor(pin);
+
+  Future<void> leaveMarket() => _sync.leaveMarket();
 
   Future<int> pendingCount() => _database.pendingCount();
 
@@ -41,4 +53,10 @@ class ProductRepository {
 
   Future<String> importImageFromUrl(String rawUrl) =>
       _imageStorage.importImageFromUrl(rawUrl);
+
+  void _requireEditor() {
+    if (!canEdit) {
+      throw StateError('Dieser Marktzugang ist schreibgeschützt.');
+    }
+  }
 }

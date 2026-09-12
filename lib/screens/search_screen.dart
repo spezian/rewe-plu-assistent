@@ -67,9 +67,8 @@ class _SearchScreenState extends State<SearchScreen>
             onChanged: (value) => setState(() => _query = value),
             decoration: InputDecoration(
               hintText: 'Produkt, PLU oder Barcode',
-              hintStyle: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    color: Colors.grey[600],
-                  ),
+              hintStyle: Theme.of(context).textTheme.bodyLarge!
+                  .copyWith(color: Colors.grey[600]),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
                 borderSide: BorderSide.none,
@@ -125,8 +124,9 @@ class _SearchScreenState extends State<SearchScreen>
                       for (final product in result.currentProducts) ...[
                         ProductCard(
                           product: product,
-                          onTogglePinned: () =>
-                              controller.togglePinned(product),
+                          onTogglePinned: controller.canEdit
+                              ? () => controller.togglePinned(product)
+                              : null,
                           onOpenDetails: () => _openDetails(context, product),
                           onOpenImages: () => _openImages(context, product),
                           onShowCode: () => _showActiveCode(context, product),
@@ -150,17 +150,22 @@ class _SearchScreenState extends State<SearchScreen>
                             context,
                             RetiredCodeHit(product: product, code: code),
                           ),
-                          onReactivate: (code) async {
-                            await controller.reactivateCode(product, code);
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '${code.displayValue} ist wieder aktuell.',
-                                ),
-                              ),
-                            );
-                          },
+                          onReactivate: controller.canEdit
+                              ? (code) async {
+                                  await controller.reactivateCode(
+                                    product,
+                                    code,
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${code.displayValue} ist wieder aktuell.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
                         ),
                         const SizedBox(height: 8),
                       ],
@@ -178,20 +183,22 @@ class _SearchScreenState extends State<SearchScreen>
                           onOpenDetails: () =>
                               _openDetails(context, hit.product),
                           onShowCode: () => _showRetiredCode(context, hit),
-                          onReactivate: () async {
-                            await controller.reactivateCode(
-                              hit.product,
-                              hit.code,
-                            );
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '${hit.code.displayValue} ist jetzt der aktuelle Code.',
-                                ),
-                              ),
-                            );
-                          },
+                          onReactivate: controller.canEdit
+                              ? () async {
+                                  await controller.reactivateCode(
+                                    hit.product,
+                                    hit.code,
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${hit.code.displayValue} ist jetzt der aktuelle Code.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
                         ),
                         const SizedBox(height: 8),
                       ],
@@ -251,14 +258,14 @@ class _ObsoleteProductCard extends StatelessWidget {
     required this.onOpenDetails,
     required this.onOpenImages,
     required this.onShowCode,
-    required this.onReactivate,
+    this.onReactivate,
   });
 
   final Product product;
   final VoidCallback onOpenDetails;
   final VoidCallback onOpenImages;
   final ValueChanged<ProductCode> onShowCode;
-  final Future<void> Function(ProductCode) onReactivate;
+  final Future<void> Function(ProductCode)? onReactivate;
 
   @override
   Widget build(BuildContext context) {
@@ -282,14 +289,19 @@ class _ObsoleteProductCard extends StatelessWidget {
                   GestureDetector(
                     onTap: product.images.isEmpty ? null : onOpenImages,
                     child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[400]!),
-                          borderRadius: BorderRadius.circular(12.0)
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[400]!),
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12.0),
+                        child: ProductImage(
+                          product: product,
+                          iconSize: 48,
+                          imageHeight: 48,
+                          imageWidth: 48,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: ProductImage(product: product, iconSize: 48, imageHeight: 48, imageWidth: 48,)
-                        )
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -317,10 +329,8 @@ class _ObsoleteProductCard extends StatelessWidget {
                               icon: Icons.category_outlined,
                               background: Colors.grey,
                             ),
-                            if (product.isOrganic)
-                              ProductBadge.bio(),
-                            if (product.isPromotion)
-                              ProductBadge.sale(),
+                            if (product.isOrganic) ProductBadge.bio(),
+                            if (product.isPromotion) ProductBadge.sale(),
                           ],
                         ),
                       ],
@@ -339,10 +349,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                   contentPadding: EdgeInsets.symmetric(horizontal: 12.0),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
-                    side: BorderSide(
-                      color: reweTeal,
-                      width: 1.0,
-                    )
+                    side: BorderSide(color: reweTeal, width: 1.0),
                   ),
                   textColor: reweDarkTeal,
                   onTap: code.type.canShowBarcode
@@ -366,16 +373,18 @@ class _ObsoleteProductCard extends StatelessWidget {
                           ].join(' · '),
                         )
                       : null,
-                  trailing: IconButton.filled(
-                    style: IconButton.styleFrom(
-                      backgroundColor: reweTeal,
-                      foregroundColor: reweDarkTeal,
-                      visualDensity: VisualDensity.compact
-                    ),
-                    tooltip: 'Diesen Code reaktivieren',
-                    onPressed: () => onReactivate(code),
-                    icon: const Icon(Icons.restore),
-                  ),
+                  trailing: onReactivate == null
+                      ? null
+                      : IconButton.filled(
+                          style: IconButton.styleFrom(
+                            backgroundColor: reweTeal,
+                            foregroundColor: reweDarkTeal,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          tooltip: 'Diesen Code reaktivieren',
+                          onPressed: () => onReactivate!(code),
+                          icon: const Icon(Icons.restore),
+                        ),
                 ),
             ],
           ),
@@ -403,11 +412,7 @@ class _SectionHeader extends StatelessWidget {
       child: Row(
         children: [
           if (warning) ...[
-            Icon(
-              Icons.history,
-              size: 20,
-              color: reweDarkRed,
-            ),
+            Icon(Icons.history, size: 20, color: reweDarkRed),
             const SizedBox(width: 7),
           ],
           Expanded(
@@ -429,13 +434,13 @@ class _RetiredCodeCard extends StatelessWidget {
     required this.hit,
     required this.onOpenDetails,
     required this.onShowCode,
-    required this.onReactivate,
+    this.onReactivate,
   });
 
   final RetiredCodeHit hit;
   final VoidCallback onOpenDetails;
   final VoidCallback onShowCode;
-  final Future<void> Function() onReactivate;
+  final Future<void> Function()? onReactivate;
 
   @override
   Widget build(BuildContext context) {
@@ -466,10 +471,8 @@ class _RetiredCodeCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ),
-                        if (hit.product.isOrganic)
-                          ProductBadge.bio(),
-                        if (hit.product.isPromotion)
-                          ProductBadge.sale(),
+                        if (hit.product.isOrganic) ProductBadge.bio(),
+                        if (hit.product.isPromotion) ProductBadge.sale(),
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -478,14 +481,14 @@ class _RetiredCodeCard extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12.0),
-                          border: BoxBorder.all(
-                            color: reweTeal,
-                            width: 1.0
-                          ),
-                          color: reweTealContainer
+                          border: BoxBorder.all(color: reweTeal, width: 1.0),
+                          color: reweTealContainer,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 4.0,
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -501,7 +504,11 @@ class _RetiredCodeCard extends StatelessWidget {
                               ),
                               if (hit.code.type.canShowBarcode) ...[
                                 const SizedBox(width: 7),
-                                const Icon(Icons.barcode_reader, size: 19, color: reweDarkTeal,),
+                                const Icon(
+                                  Icons.barcode_reader,
+                                  size: 19,
+                                  color: reweDarkTeal,
+                                ),
                               ],
                             ],
                           ),
@@ -526,15 +533,16 @@ class _RetiredCodeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton.filledTonal(
-                style: IconButton.styleFrom(
+              if (onReactivate != null)
+                IconButton.filledTonal(
+                  style: IconButton.styleFrom(
                     backgroundColor: reweTealContainer,
                     foregroundColor: reweDarkTeal,
+                  ),
+                  tooltip: 'Diesen Code reaktivieren',
+                  onPressed: onReactivate,
+                  icon: const Icon(Icons.restore),
                 ),
-                tooltip: 'Diesen Code reaktivieren',
-                onPressed: onReactivate,
-                icon: const Icon(Icons.restore),
-              ),
             ],
           ),
         ),
