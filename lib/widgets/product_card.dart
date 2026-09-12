@@ -270,7 +270,7 @@ class _CodeButton extends StatelessWidget {
                     children: [
                       if (code.type == ProductCodeType.cashierTile) ...[
                         Text(
-                          'Bedienerkachel: ${code.displayValue}',
+                          'Kachel: ${code.displayValue}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
