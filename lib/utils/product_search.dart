@@ -1,4 +1,5 @@
 import '../models/product.dart';
+import 'product_sort.dart';
 
 class RetiredCodeHit {
   const RetiredCodeHit({
@@ -26,11 +27,7 @@ class ProductSearchResult {
 
 ProductSearchResult searchProducts(List<Product> products, String rawQuery) {
   final query = normalizeSearchText(rawQuery);
-  final sortedProducts = [...products]
-    ..sort((a, b) {
-      if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
+  final sortedProducts = [...products]..sort(compareProductsForOverview);
 
   if (query.isEmpty) {
     return ProductSearchResult(
