@@ -59,7 +59,7 @@ class _MarketAccessScreenState extends State<MarketAccessScreen> {
                     const SizedBox(height: 28),
                     TextFormField(
                       controller: _marketNumberController,
-                      autofocus: true,
+                      autofocus: false,
                       obscureText: true,
                       obscuringCharacter: '•',
                       keyboardType: TextInputType.number,
