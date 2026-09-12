@@ -28,46 +28,48 @@ class ProductDetailScreen extends StatelessWidget {
         title: const Text('Produktdetails'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        actions: [
-          Container(
-              decoration: BoxDecoration(
-                color: reweDarkRed,
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-            margin: const EdgeInsets.only(right: 8.0),
-            padding: EdgeInsets.symmetric(horizontal: 4.0),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Bearbeiten',
-                  color: Colors.white,
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ProductFormScreen(product: product),
-                    ),
+        actions: controller.canEdit
+            ? [
+                Container(
+                  decoration: BoxDecoration(
+                    color: reweDarkRed,
+                    borderRadius: BorderRadius.circular(12.0),
                   ),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'delete') _delete(context, product);
-                  },
-                  iconColor: Colors.white,
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.delete_outline),
-                        title: Text('Produkt löschen'),
+                  margin: const EdgeInsets.only(right: 8.0),
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Bearbeiten',
+                        color: Colors.white,
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ProductFormScreen(product: product),
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
                       ),
-                    ),
-                  ],
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'delete') _delete(context, product);
+                        },
+                        iconColor: Colors.white,
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(Icons.delete_outline),
+                              title: Text('Produkt löschen'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          )
-        ],
+              ]
+            : null,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -83,9 +85,7 @@ class ProductDetailScreen extends StatelessWidget {
                         : () => _openGallery(context, product, 0),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black38,
-                        ),
+                        border: Border.all(color: Colors.black38),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
                       child: Padding(
@@ -141,27 +141,45 @@ class ProductDetailScreen extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         Chip(
-                          avatar: Icon(Icons.category_outlined, size: 18, color: Colors.grey[700]!),
+                          avatar: Icon(
+                            Icons.category_outlined,
+                            size: 18,
+                            color: Colors.grey[700]!,
+                          ),
                           backgroundColor: Colors.grey[200],
                           side: BorderSide(color: Colors.grey[400]!),
-                          label: Text(product.category, style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Colors.grey[700])),
+                          label: Text(
+                            product.category,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(color: Colors.grey[700]),
+                          ),
                         ),
                         if (product.isOrganic)
                           Chip(
-                            avatar: Icon(Icons.eco, size: 17, color: Colors.green[900],),
+                            avatar: Icon(
+                              Icons.eco,
+                              size: 17,
+                              color: Colors.green[900],
+                            ),
                             label: Text(
                               'BIO',
-                              style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Colors.green[900]),
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(color: Colors.green[900]),
                             ),
                             backgroundColor: Colors.green[100],
                             side: BorderSide(color: Colors.green[400]!),
                           ),
                         if (product.isPromotion)
                           Chip(
-                            avatar: Icon(Icons.local_offer, size: 17, color: reweDarkRed,),
+                            avatar: Icon(
+                              Icons.local_offer,
+                              size: 17,
+                              color: reweDarkRed,
+                            ),
                             label: Text(
                               'AKTION',
-                              style: Theme.of(context).textTheme.bodySmall!.copyWith(color: reweDarkRed),
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(color: reweDarkRed),
                             ),
                             backgroundColor: reweRedContainer,
                             side: BorderSide(color: reweRed),
@@ -189,9 +207,7 @@ class ProductDetailScreen extends StatelessWidget {
                       width: 71,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black38,
-                          ),
+                          border: Border.all(color: Colors.black38),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Padding(
@@ -225,7 +241,11 @@ class ProductDetailScreen extends StatelessWidget {
               children: [
                 for (final alias in product.aliases)
                   Chip(
-                    avatar: const Icon(Icons.alternate_email, size: 16, color: reweDarkTeal,),
+                    avatar: const Icon(
+                      Icons.alternate_email,
+                      size: 16,
+                      color: reweDarkTeal,
+                    ),
                     backgroundColor: reweTealContainer,
                     side: BorderSide.none,
                     label: Text(alias),
@@ -253,9 +273,12 @@ class ProductDetailScreen extends StatelessWidget {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Dieses Produkt ist vollständig veraltet. Unten kann '
-                        'ein Code reaktiviert werden.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                        controller.canEdit
+                            ? 'Dieses Produkt ist vollständig veraltet. Unten '
+                                  'kann ein Code reaktiviert werden.'
+                            : 'Dieses Produkt ist vollständig veraltet.',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: Colors.white),
                       ),
                     ),
                   ],
@@ -280,20 +303,25 @@ class ProductDetailScreen extends StatelessWidget {
             Card(
               color: reweTealContainer,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(
-                      color: reweTeal
-                  )
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: reweTeal),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text('Noch keine veralteten Codes.',
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: reweDarkTeal),),
+                child: Text(
+                  'Noch keine veralteten Codes.',
+                  style: Theme.of(context).textTheme.bodyMedium!
+                      .copyWith(color: reweDarkTeal),
+                ),
               ),
             )
           else
             for (final code in product.retiredCodes) ...[
-              _HistoryCodeCard(product: product, code: code),
+              _HistoryCodeCard(
+                product: product,
+                code: code,
+                canEdit: controller.canEdit,
+              ),
               const SizedBox(height: 8),
             ],
           const SizedBox(height: 18),
@@ -363,8 +391,7 @@ class _ProductImageThumbnail extends StatelessWidget {
       codes: const [],
       images: [image],
     );
-    return ProductImage(
-      product: product,);
+    return ProductImage(product: product);
   }
 }
 
@@ -394,27 +421,39 @@ class _CurrentCodeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(code.type.label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white,)),
+                    Text(
+                      code.type.label,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: Colors.white),
+                    ),
                     const SizedBox(height: 3),
                     Text(
                       code.displayValue,
                       style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
                     ),
                     if (code.secondaryDisplay case final secondary?)
                       Text(
                         secondary,
-                        style: Theme.of(context).textTheme.bodyLarge
-                            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    if (code.note.isNotEmpty) Text(code.note, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white,)),
+                    if (code.note.isNotEmpty)
+                      Text(
+                        code.note,
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: Colors.white),
+                      ),
                   ],
                 ),
               ),
               if (code.type.canShowBarcode)
-                const Icon(Icons.barcode_reader, size: 34, color: Colors.white,),
+                const Icon(Icons.barcode_reader, size: 34, color: Colors.white),
             ],
           ),
         ),
@@ -424,10 +463,15 @@ class _CurrentCodeCard extends StatelessWidget {
 }
 
 class _HistoryCodeCard extends StatelessWidget {
-  const _HistoryCodeCard({required this.product, required this.code});
+  const _HistoryCodeCard({
+    required this.product,
+    required this.code,
+    required this.canEdit,
+  });
 
   final Product product;
   final ProductCode code;
+  final bool canEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -435,21 +479,19 @@ class _HistoryCodeCard extends StatelessWidget {
       color: reweTealContainer,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: reweTeal
-        )
+        side: BorderSide(color: reweTeal),
       ),
       child: InkWell(
         onTap: code.type.canShowBarcode
             ? () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BarcodeScreen(
-              product: product,
-              code: code,
-              isObsolete: true,
-            ),
-          ),
-        )
+                MaterialPageRoute<void>(
+                  builder: (_) => BarcodeScreen(
+                    product: product,
+                    code: code,
+                    isObsolete: true,
+                  ),
+                ),
+              )
             : null,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
@@ -467,30 +509,39 @@ class _HistoryCodeCard extends StatelessWidget {
                         color: reweDarkTeal,
                         decorationColor: reweDarkTeal,
                         fontWeight: FontWeight.w700,
-                      )
+                      ),
                     ),
                     Text(
                       code.retiredAt == null
                           ? 'Veraltet'
                           : 'Veraltet seit ${_formatDate(code.retiredAt!)}',
-                      style: Theme.of(context).textTheme.bodySmall!.copyWith(color: reweDarkTeal),
+                      style: Theme.of(context).textTheme.bodySmall!
+                          .copyWith(color: reweDarkTeal),
                     ),
                     if (code.secondaryDisplay case final secondary?)
-                      Text(secondary, style: Theme.of(context).textTheme.bodySmall),
-                    if (code.note.isNotEmpty) Text(code.note, style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        secondary,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    if (code.note.isNotEmpty)
+                      Text(
+                        code.note,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                   ],
                 ),
               ),
-              IconButton.filled(
-                tooltip: 'Reaktivieren',
-                style: IconButton.styleFrom(
+              if (canEdit)
+                IconButton.filled(
+                  tooltip: 'Reaktivieren',
+                  style: IconButton.styleFrom(
                     backgroundColor: reweTeal,
                     foregroundColor: reweDarkTeal,
+                  ),
+                  onPressed: () =>
+                      AppScope.of(context).reactivateCode(product, code),
+                  icon: const Icon(Icons.restore),
                 ),
-                onPressed: () =>
-                    AppScope.of(context).reactivateCode(product, code),
-                icon: const Icon(Icons.restore),
-              ),
             ],
           ),
         ),

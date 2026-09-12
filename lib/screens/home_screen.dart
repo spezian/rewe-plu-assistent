@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../app_scope.dart';
@@ -6,6 +7,7 @@ import '../core/app_constants.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
 import 'barcode_screen.dart';
+import 'market_access_screen.dart';
 import 'product_detail_screen.dart';
 import 'product_form_screen.dart';
 import 'product_gallery_screen.dart';
@@ -41,6 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        if (controller.isSyncConfigured && !controller.hasMarketAccess) {
+          return MarketAccessScreen(controller: controller);
+        }
         return Scaffold(
           appBar: AppBar(
             title: Text(allDestinations[_selectedTab].title),
@@ -61,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 4),
                   ],
                 ),
-              )
+              ),
             ],
           ),
           body: IndexedStack(
@@ -69,27 +74,26 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const ProductListPage(),
               SearchScreen(isActive: _selectedTab == 1),
-              Container(color: Colors.white)
+              Container(color: Colors.white),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const ProductFormScreen(),
-              ),
-            ),
-            backgroundColor: reweDarkRed,
-            shape: CircleBorder(),
-            child: const Icon(Icons.add, color: Colors.white,),
-          ),
+          floatingActionButton: controller.canEdit
+              ? FloatingActionButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ProductFormScreen(),
+                    ),
+                  ),
+                  backgroundColor: reweDarkRed,
+                  shape: CircleBorder(),
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+              : null,
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(
-                top: BorderSide(
-                  color: Colors.grey[300]!,
-                  width: 1,
-                ),
+                top: BorderSide(color: Colors.grey[300]!, width: 1),
               ),
             ),
             child: NavigationBar(
@@ -99,12 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: Colors.white,
               indicatorColor: Colors.grey[200]!,
               labelTextStyle: WidgetStateProperty.fromMap({
-                WidgetState.selected: Theme.of(context).textTheme.labelMedium!.copyWith(color: reweDarkRed),
-                WidgetState.any: Theme.of(context).textTheme.labelMedium!.copyWith(color: Colors.black)
+                WidgetState.selected: Theme.of(context).textTheme.labelMedium!
+                    .copyWith(color: reweDarkRed),
+                WidgetState.any: Theme.of(context).textTheme.labelMedium!
+                    .copyWith(color: Colors.black),
               }),
               destinations: allDestinations.map<NavigationDestination>((
-                  Destination destination,
-                  ) {
+                Destination destination,
+              ) {
                 return NavigationDestination(
                   icon: Icon(destination.icon, color: Colors.black),
                   selectedIcon: Icon(destination.icon, color: reweDarkRed),
@@ -132,7 +138,7 @@ class _SyncButton extends StatelessWidget {
         child: SizedBox.square(
           dimension: 18,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5,
+            strokeWidth: 2.5,
             color: Colors.white,
           ),
         ),
@@ -180,7 +186,7 @@ class _SyncButton extends StatelessWidget {
                 ),
               );
             } else if (locked) {
-              _showCloudLogin(context, controller);
+              // The market entry screen is shown whenever access is locked.
             } else if (isError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -215,122 +221,107 @@ class _AccountButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: controller.isAuthenticated
-          ? controller.currentUserEmail ?? 'Cloud-Konto'
-          : 'Cloud anmelden',
+      tooltip: 'Marktzugang',
       color: Colors.white,
       onPressed: () async {
-        if (!controller.isAuthenticated) {
-          await _showCloudLogin(context, controller);
-          return;
-        }
-        final signOut = await showDialog<bool>(
+        final action = await showDialog<String>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Cloud-Konto'),
+            icon: Icon(
+              controller.canEdit
+                  ? Icons.edit_outlined
+                  : Icons.visibility_outlined,
+            ),
+            title: const Text('Marktzugang'),
             content: Text(
-              'Angemeldet als\n${controller.currentUserEmail ?? 'Benutzer'}',
+              controller.canEdit
+                  ? 'Bearbeitungszugang ist aktiv.'
+                  : 'Der Markt ist schreibgeschützt geöffnet. Ansehen und '
+                        'Suchen ist ohne PIN möglich.',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context),
                 child: const Text('Schließen'),
               ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.pop(context, true),
-                icon: const Icon(Icons.logout),
-                label: const Text('Abmelden'),
+              if (!controller.canEdit)
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'upgrade'),
+                  child: const Row(mainAxisSize: MainAxisSize.min, spacing: 4.0, children: [Icon(Icons.lock_open_outlined), Text('Bearbeiten')],),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'leave'),
+                child: const Row(mainAxisSize: MainAxisSize.min, spacing: 4.0, children: [Icon(Icons.logout), Text('Markt verlassen')],),
               ),
             ],
           ),
         );
-        if (signOut == true) await controller.signOut();
+        if (!context.mounted) return;
+        if (action == 'upgrade') {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => _EditorPinDialog(controller: controller),
+          );
+        } else if (action == 'leave') {
+          await controller.leaveMarket();
+        }
       },
       icon: Icon(
-        controller.isAuthenticated ? Icons.account_circle : Icons.lock_outline,
+        controller.canEdit ? Icons.edit_outlined : Icons.visibility_outlined,
       ),
     );
   }
 }
 
-Future<void> _showCloudLogin(BuildContext context, AppController controller) =>
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _CloudLoginDialog(controller: controller),
-    );
-
-class _CloudLoginDialog extends StatefulWidget {
-  const _CloudLoginDialog({required this.controller});
+class _EditorPinDialog extends StatefulWidget {
+  const _EditorPinDialog({required this.controller});
 
   final AppController controller;
 
   @override
-  State<_CloudLoginDialog> createState() => _CloudLoginDialogState();
+  State<_EditorPinDialog> createState() => _EditorPinDialogState();
 }
 
-class _CloudLoginDialogState extends State<_CloudLoginDialog> {
-  late final TextEditingController _emailController;
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+class _EditorPinDialogState extends State<_EditorPinDialog> {
+  final _pinController = TextEditingController();
   bool _loading = false;
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _emailController = TextEditingController();
-  }
-
-  @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      icon: const Icon(Icons.lock_outline),
-      title: const Text('Geschützter Cloud-Zugang'),
+      icon: const Icon(Icons.pin_outlined),
+      title: const Text('Bearbeiten entsperren'),
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Lokale Daten bleiben ohne Anmeldung nutzbar. Für die Online-'
-              'Datenbank sind E-Mail und Zugangspasswort erforderlich.',
+              'Gib die PIN dieses Marktes ein.',
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
+              controller: _pinController,
+              autofocus: true,
+              obscureText: true,
+              obscuringCharacter: '•',
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
               autocorrect: false,
+              enableSuggestions: false,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onSubmitted: (_) => _unlock(),
               decoration: const InputDecoration(
-                labelText: 'E-Mail',
-                prefixIcon: Icon(Icons.mail_outline),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              autofocus: false,
-              obscureText: _obscurePassword,
-              autocorrect: false,
-              onSubmitted: (_) => _login(),
-              decoration: InputDecoration(
-                labelText: 'Zugangspasswort',
-                prefixIcon: const Icon(Icons.password),
-                suffixIcon: IconButton(
-                  tooltip: _obscurePassword ? 'Passwort anzeigen' : 'Verbergen',
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                ),
+                labelText: 'Markt-PIN',
+                prefixIcon: Icon(Icons.password),
               ),
             ),
             if (_error != null) ...[
@@ -346,26 +337,25 @@ class _CloudLoginDialogState extends State<_CloudLoginDialog> {
       actions: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context),
-          child: const Text('Offline bleiben'),
+          child: const Text('Abbrechen'),
         ),
         FilledButton.icon(
-          onPressed: _loading ? null : _login,
+          onPressed: _loading ? null : _unlock,
           icon: _loading
               ? const SizedBox.square(
                   dimension: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.login),
-          label: const Text('Anmelden'),
+          label: const Text('Entsperren'),
         ),
       ],
     );
   }
 
-  Future<void> _login() async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.isEmpty) {
-      setState(() => _error = 'Bitte E-Mail und Passwort eingeben.');
+  Future<void> _unlock() async {
+    if (_pinController.text.isEmpty) {
+      setState(() => _error = 'Bitte PIN eingeben.');
       return;
     }
     setState(() {
@@ -373,19 +363,13 @@ class _CloudLoginDialogState extends State<_CloudLoginDialog> {
       _error = null;
     });
     try {
-      await widget.controller.signIn(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+      await widget.controller.upgradeToEditor(_pinController.text);
       if (mounted) Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
-      final text = error.toString();
       setState(() {
         _loading = false;
-        _error = text.contains('Invalid login credentials')
-            ? 'E-Mail oder Passwort ist falsch.'
-            : 'Anmeldung fehlgeschlagen: $text';
+        _error = 'PIN ist falsch.';
       });
     }
   }
@@ -442,9 +426,17 @@ class _ProductListPageState extends State<ProductListPage>
               Padding(
                 padding: const EdgeInsets.only(right: 7),
                 child: ChoiceChip(
-                  avatar: StatefulBuilder(builder: (context, setState) {
-                    return Icon(Icons.history, size: 18, color: _category == 'Veraltet' ? Colors.white : Colors.black);
-                  }),
+                  avatar: StatefulBuilder(
+                    builder: (context, setState) {
+                      return Icon(
+                        Icons.history,
+                        size: 18,
+                        color: _category == 'Veraltet'
+                            ? Colors.white
+                            : Colors.black,
+                      );
+                    },
+                  ),
                   label: const Text('Veraltet'),
                   selected: _category == 'Veraltet',
                   showCheckmark: false,
@@ -479,7 +471,9 @@ class _ProductListPageState extends State<ProductListPage>
   ) {
     return ProductCard(
       product: product,
-      onTogglePinned: () => controller.togglePinned(product),
+      onTogglePinned: controller.canEdit
+          ? () => controller.togglePinned(product)
+          : null,
       onOpenDetails: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ProductDetailScreen(productId: product.id),
