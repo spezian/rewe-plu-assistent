@@ -308,40 +308,70 @@ class SyncService {
 
       final existing = await _database.getProduct(productId);
       final remoteUpdated = DateTime.parse(productMap['updated_at'] as String);
-      final existingPaths = {
+      final existingImages = {
         for (final image in existing?.images ?? const <ProductImageData>[])
-          image.id: (
-            original: image.localPath,
-            thumbnail: image.localThumbnailPath,
-          ),
+          image.id: image,
       };
-      final images =
-          (imageMapsByProduct[productId] ?? const [])
-              .map(
-                (imageMap) => ProductImageData.fromRemoteMap(
-                  imageMap,
-                  existingLocalPath: existingPaths[imageMap['id']]?.original,
-                  existingLocalThumbnailPath:
-                      existingPaths[imageMap['id']]?.thumbnail,
-                ),
-              )
-              .toList()
-            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final images = (imageMapsByProduct[productId] ?? const []).map((
+        imageMap,
+      ) {
+        final existingImage = existingImages[imageMap['id']];
+        final remoteUrl = imageMap['remote_url'] as String?;
+        final remoteThumbnailUrl = imageMap['remote_thumbnail_url'] as String?;
+        return ProductImageData.fromRemoteMap(
+          imageMap,
+          existingLocalPath: existingImage?.remoteUrl == remoteUrl
+              ? existingImage?.localPath
+              : null,
+          existingLocalThumbnailPath:
+              existingImage?.remoteThumbnailUrl == remoteThumbnailUrl
+              ? existingImage?.localThumbnailPath
+              : null,
+        );
+      }).toList()..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       if (existing != null &&
           !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
         // Bildzeilen können sich unabhängig vom Produkt-Zeitstempel ändern.
         // Deshalb wird ihre lokale Kopie auch bei unverändertem Produkt
         // aktualisiert.
         await _database.applyRemoteImages(productId, images);
-        continue;
+      } else {
+        final codes = (codeMapsByProduct[productId] ?? const [])
+            .map(ProductCode.fromRemoteMap)
+            .toList();
+        await _database.applyRemoteProduct(
+          Product.fromRemoteMap(productMap, codes, images: images),
+        );
       }
-      final codes = (codeMapsByProduct[productId] ?? const [])
-          .map(ProductCode.fromRemoteMap)
-          .toList();
-      await _database.applyRemoteProduct(
-        Product.fromRemoteMap(productMap, codes, images: images),
-      );
+      await _cacheRemoteThumbnails(images);
     }
+  }
+
+  Future<void> _cacheRemoteThumbnails(List<ProductImageData> images) async {
+    await Future.wait(
+      images.map((image) async {
+        final existingPath = image.localThumbnailPath;
+        if (existingPath != null &&
+            await _imageStorage.readBytes(existingPath) != null) {
+          return;
+        }
+        final remoteUrl = image.remoteThumbnailUrl;
+        if (remoteUrl == null || remoteUrl.isEmpty) return;
+        try {
+          final localPath = await _imageStorage.cacheImageFromUrl(
+            remoteUrl,
+            thumbnail: true,
+          );
+          await _database.updateLocalImageCache(
+            image.id,
+            thumbnailPath: localPath,
+          );
+        } catch (_) {
+          // Der normale Netzwerk-Fallback bleibt verfügbar. Beim nächsten Sync
+          // wird ein fehlender lokaler Cache erneut versucht.
+        }
+      }),
+    );
   }
 
   String _friendlyError(Object error) {

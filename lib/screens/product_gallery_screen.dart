@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_scope.dart';
 import '../data/local_image_storage.dart';
 import '../models/product.dart';
 
@@ -24,6 +25,7 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
   static const _imageStorage = LocalImageStorage();
   late final PageController _pageController;
   late int _currentIndex;
+  final Map<String, Future<String?>> _originalCacheRequests = {};
 
   @override
   void initState() {
@@ -120,17 +122,37 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
     }
     final remoteUrl = image.remoteUrl;
     if (remoteUrl != null && remoteUrl.isNotEmpty) {
-      return Image.network(
-        remoteUrl,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, progress) => progress == null
-            ? child
-            : const CircularProgressIndicator(color: Colors.white),
-        errorBuilder: (_, _, _) => const _MissingImage(),
+      final cacheRequest = _originalCacheRequests.putIfAbsent(
+        image.id,
+        () => AppScope.of(context).cacheRemoteOriginal(image),
+      );
+      return FutureBuilder<String?>(
+        future: cacheRequest,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done &&
+              !snapshot.hasError) {
+            final cachedProvider = _imageStorage.providerFor(snapshot.data);
+            if (cachedProvider != null) {
+              return Image(image: cachedProvider, fit: BoxFit.contain);
+            }
+            return _networkImage(remoteUrl);
+          }
+          if (snapshot.hasError) return _networkImage(remoteUrl);
+          return const CircularProgressIndicator(color: Colors.white);
+        },
       );
     }
     return const _MissingImage();
   }
+
+  Widget _networkImage(String remoteUrl) => Image.network(
+    remoteUrl,
+    fit: BoxFit.contain,
+    loadingBuilder: (context, child, progress) => progress == null
+        ? child
+        : const CircularProgressIndicator(color: Colors.white),
+    errorBuilder: (_, _, _) => const _MissingImage(),
+  );
 
   bool _hasSourceInformation(ProductImageData image) =>
       image.sourcePageUrl != null ||
