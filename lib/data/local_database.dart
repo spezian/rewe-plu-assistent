@@ -397,6 +397,11 @@ class LocalDatabase {
       where: 'product_id = ?',
       whereArgs: [product.id],
     );
+    await transaction.delete(
+      'product_images',
+      where: 'product_id = ?',
+      whereArgs: [product.id],
+    );
     for (final code in product.codes) {
       await transaction.insert(
         'product_codes',

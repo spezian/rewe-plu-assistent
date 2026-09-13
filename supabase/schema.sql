@@ -122,6 +122,76 @@ create index if not exists product_codes_product
 create index if not exists product_images_product
   on public.product_images(product_id, sort_order);
 
+-- Realtime lauscht ausschließlich auf Produkte des geöffneten Marktes. Wenn
+-- Codes oder Bilder geändert werden, aktualisieren diese Trigger deshalb den
+-- Zeitstempel des zugehörigen Produkts und erzeugen ein gefiltertes Live-Event.
+create or replace function public.touch_product_after_child_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_product_id uuid;
+begin
+  if tg_op = 'DELETE' then
+    v_product_id := old.product_id;
+  else
+    v_product_id := new.product_id;
+  end if;
+
+  update public.products
+  set updated_at = greatest(
+    products.updated_at + interval '1 microsecond',
+    clock_timestamp()
+  )
+  where id = v_product_id;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.touch_product_after_child_change()
+  from public, anon, authenticated;
+
+drop trigger if exists touch_product_after_code_change
+  on public.product_codes;
+create trigger touch_product_after_code_change
+after insert or update or delete on public.product_codes
+for each row execute function public.touch_product_after_child_change();
+
+drop trigger if exists touch_product_after_image_change
+  on public.product_images;
+create trigger touch_product_after_image_change
+after insert or update or delete on public.product_images
+for each row execute function public.touch_product_after_child_change();
+
+-- Neue Tabellen sind bei Supabase nicht automatisch für Postgres Changes
+-- freigeschaltet. Der Block kann bei Schema-Updates gefahrlos erneut laufen.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication
+    where pubname = 'supabase_realtime'
+  ) then
+    create publication supabase_realtime;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'products'
+  ) then
+    alter publication supabase_realtime add table public.products;
+  end if;
+end;
+$$;
+
 -- Administrative Einrichtung eines Marktes. Nur im SQL Editor bzw. mit dem
 -- Service-Role-Schlüssel aufrufen. p_adopt_legacy_products ordnet einmalig alle
 -- Zeilen aus dem früheren Einzelkonto-Modell diesem Markt zu.

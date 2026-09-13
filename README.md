@@ -29,6 +29,8 @@ mit Supabase abgeglichen.
   PIN oder Bearbeitungsmodus mit Markt-PIN
 - vollständig schreibgeschützter Lesemodus für Kassenpersonal
 - Offline-Datenbank und Sync-Warteschlange, jeweils strikt nach Markt getrennt
+- Live-Aktualisierung geänderter Produkte auf allen geöffneten Geräten eines
+  Marktes über Supabase Realtime
 - dauerhaft aktivierter Bildschirm-Wakelock, auch im Web
 
 ## Lokal starten
@@ -55,8 +57,8 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
    es keine Benutzerkonten.
 3. Im SQL Editor [supabase/schema.sql](supabase/schema.sql) ausführen.
    Bei einem bereits eingerichteten Projekt das aktualisierte Skript erneut
-   ausführen; es ergänzt unter anderem die Thumbnail-URLs und ersetzt die
-   alten Benutzerkonto-Policies idempotent.
+   ausführen; es aktiviert unter anderem Realtime für Produkte, ergänzt die
+   Thumbnail-URLs und ersetzt die alten Benutzerkonto-Policies idempotent.
 4. Den ersten Markt ausschließlich im SQL Editor anlegen. Bei der Migration aus
    der bisherigen Einzelmarkt-Version ordnet `true` alle noch nicht zugeordneten
    Cloud-Produkte diesem Markt zu:

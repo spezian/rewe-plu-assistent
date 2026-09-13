@@ -19,6 +19,7 @@ class ProductRepository {
   bool get hasMarketAccess => _sync.hasMarketAccess;
   bool get canEdit => _sync.canEdit;
   MarketSession? get marketSession => _sync.marketSession;
+  Stream<void> get remoteChanges => _sync.remoteChanges;
 
   Future<void> initialize() async {
     await _database.initialize();
@@ -47,6 +48,8 @@ class ProductRepository {
   Future<void> leaveMarket() => _sync.leaveMarket();
 
   Future<int> pendingCount() => _database.pendingCount();
+
+  Future<void> dispose() => _sync.dispose();
 
   Future<ImportedProductImage> importPickedImage(XFile pickedFile) =>
       _imageStorage.importPickedImage(pickedFile);
