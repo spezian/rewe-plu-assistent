@@ -398,6 +398,12 @@ class _ProductListPageState extends State<ProductListPage>
       if (product.isObsolete) return false;
       return _category == null || product.category == _category;
     }).toList();
+    final promotionProducts = products
+        .where((product) => product.isPromotion && !product.isObsolete)
+        .toList(growable: false);
+    final regularProducts = products
+        .where((product) => !product.isPromotion || product.isObsolete)
+        .toList(growable: false);
     return Column(
       children: [
         SizedBox(
@@ -452,12 +458,32 @@ class _ProductListPageState extends State<ProductListPage>
                   hasAnyProducts: controller.products.isNotEmpty,
                   showingObsolete: _category == 'Veraltet',
                 )
-              : ListView.separated(
+              : ListView(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
-                  itemCount: products.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) =>
-                      _productCard(context, controller, products[index]),
+                  children: [
+                    if (promotionProducts.isNotEmpty) ...[
+                      _ProductListSectionHeader(
+                        title: 'Aktion der Woche',
+                        count: promotionProducts.length,
+                        promotion: true,
+                      ),
+                      for (final product in promotionProducts) ...[
+                        _productCard(context, controller, product),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
+                    if (regularProducts.isNotEmpty) ...[
+                      if (promotionProducts.isNotEmpty)
+                        _ProductListSectionHeader(
+                          title: 'Weitere Produkte',
+                          count: regularProducts.length,
+                        ),
+                      for (final product in regularProducts) ...[
+                        _productCard(context, controller, product),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
+                  ],
                 ),
         ),
       ],
@@ -494,6 +520,44 @@ class _ProductListPageState extends State<ProductListPage>
           ),
         );
       },
+    );
+  }
+}
+
+class _ProductListSectionHeader extends StatelessWidget {
+  const _ProductListSectionHeader({
+    required this.title,
+    required this.count,
+    this.promotion = false,
+  });
+
+  final String title;
+  final int count;
+  final bool promotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = promotion
+        ? reweDarkRed
+        : Theme.of(context).colorScheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 5, 4, 8),
+      child: Row(
+        children: [
+          if (promotion) ...[
+            Icon(Icons.local_offer_outlined, size: 20, color: color),
+            const SizedBox(width: 7),
+          ],
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: color, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Text('$count', style: TextStyle(color: color)),
+        ],
+      ),
     );
   }
 }

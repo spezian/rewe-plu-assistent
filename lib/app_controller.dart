@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'data/product_repository.dart';
 import 'models/market_session.dart';
 import 'models/product.dart';
+import 'utils/product_sort.dart';
 
 enum AppSyncState { localOnly, locked, idle, syncing, error }
 
@@ -147,14 +148,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reload() async {
     _products = await repository.getProducts();
-    _products = [..._products]
-      ..sort((a, b) {
-        if (a.isObsolete != b.isObsolete) return a.isObsolete ? 1 : -1;
-        if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
-        final categoryOrder = a.category.compareTo(b.category);
-        if (categoryOrder != 0) return categoryOrder;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
+    _products = [..._products]..sort(compareProductsForOverview);
     pendingChanges = await repository.pendingCount();
   }
 
