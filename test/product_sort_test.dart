@@ -8,6 +8,7 @@ void main() {
   Product product({
     required String id,
     required String name,
+    String category = 'Obst',
     bool isPromotion = false,
     bool isPinned = false,
     bool isActive = true,
@@ -15,7 +16,7 @@ void main() {
     return Product(
       id: id,
       name: name,
-      category: 'Obst',
+      category: category,
       isPromotion: isPromotion,
       isPinned: isPinned,
       createdAt: now,
@@ -54,5 +55,28 @@ void main() {
       ..sort(compareProductsForOverview);
 
     expect(products, [activeRegular, obsoletePromotion]);
+  });
+
+  test('sortiert Produkte innerhalb eines Bereichs alphabetisch', () {
+    final zucchini = product(
+      id: '1',
+      name: 'Zucchini',
+      category: 'Gemüse',
+      isPinned: true,
+    );
+    final apple = product(id: '2', name: 'Apfel', category: 'Obst');
+    final banana = product(id: '3', name: 'Banane', category: 'Obst');
+    final products = [zucchini, banana, apple]
+      ..sort(compareProductsForOverview);
+
+    expect(products, [apple, banana, zucchini]);
+  });
+
+  test('berücksichtigt deutsche Umlaute bei der Sortierung', () {
+    final banana = product(id: '1', name: 'Banane');
+    final apples = product(id: '2', name: 'Äpfel');
+    final products = [banana, apples]..sort(compareProductsForOverview);
+
+    expect(products, [apples, banana]);
   });
 }

@@ -183,13 +183,15 @@ class SyncService {
       ..['deleted_at'] = null;
     await client.from('products').upsert(productMap);
 
+    // Der lokale Produktstand ist maßgeblich. Durch das vorherige Entfernen
+    // verschwinden auch Codes in Supabase, die im Formular gelöscht wurden.
+    // Gleichzeitig kann der aktive Code ohne Konflikt mit dem partiellen
+    // Unique-Index gewechselt werden.
+    await client
+        .from('product_codes')
+        .delete()
+        .eq('product_id', entry.productId);
     if (codeMaps.isNotEmpty) {
-      // Verhindert beim Wechsel des aktiven Codes einen kurzzeitigen Konflikt
-      // mit dem partiellen Unique-Index in Supabase.
-      await client
-          .from('product_codes')
-          .update({'is_active': false})
-          .eq('product_id', entry.productId);
       await client.from('product_codes').upsert(codeMaps);
     }
 
