@@ -50,23 +50,18 @@ class ProductImage extends StatelessWidget {
     final icon = switch (product.category) {
       'Obst' => Icons.apple,
       'Gemüse' => Icons.eco,
+      'Pilze' => Icons.park,
+      'Schalenfrüchte' => Icons.spa,
+      'Beschädigt' => Icons.broken_image,
       'Backwaren' => Icons.bakery_dining,
-      'Getränke' => Icons.local_drink,
-      'Molkereiprodukte' => Icons.breakfast_dining,
-      'Fleisch & Wurst' => Icons.lunch_dining,
-      'Tiefkühl' => Icons.ac_unit,
-      'Süßwaren' => Icons.cake,
-      'Haushalt' => Icons.cleaning_services,
+      'Alkohol' => Icons.wine_bar,
+      'Mobilfunk' => Icons.phone_android,
       _ => Icons.shopping_basket,
     };
     return SizedBox(
       width: imageWidth,
       height: imageHeight,
-      child: Icon(
-        icon,
-        size: iconSize * .46,
-        color: Color(0xffcc071e),
-      ),
+      child: Icon(icon, size: iconSize * .46, color: Color(0xffcc071e)),
     );
   }
 }
