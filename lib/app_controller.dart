@@ -13,11 +13,20 @@ import 'utils/product_sort.dart';
 enum AppSyncState { localOnly, locked, idle, syncing, error }
 
 class AppController extends ChangeNotifier {
-  AppController(this.repository);
+  AppController(
+    this.repository, {
+    Stream<List<ConnectivityResult>>? connectivityChanges,
+    this.liveSyncDebounce = const Duration(milliseconds: 500),
+  }) : _connectivityChanges =
+           connectivityChanges ?? Connectivity().onConnectivityChanged;
 
   final ProductRepository repository;
-  final Connectivity _connectivity = Connectivity();
+  final Stream<List<ConnectivityResult>> _connectivityChanges;
+  final Duration liveSyncDebounce;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<void>? _remoteChangesSubscription;
+  Timer? _liveSyncTimer;
+  bool _liveSyncRequested = false;
 
   List<Product> _products = const [];
   List<Product> get products => _products;
@@ -34,6 +43,9 @@ class AppController extends ChangeNotifier {
       repository.marketSession?.accessLevel;
 
   Future<void> initialize() async {
+    _remoteChangesSubscription = repository.remoteChanges.listen((_) {
+      _scheduleLiveSync();
+    });
     await repository.initialize();
     await _reload();
     isLoading = false;
@@ -44,9 +56,7 @@ class AppController extends ChangeNotifier {
         : AppSyncState.locked;
     notifyListeners();
 
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
-      connections,
-    ) {
+    _connectivitySubscription = _connectivityChanges.listen((connections) {
       if (!connections.contains(ConnectivityResult.none)) {
         unawaited(syncNow());
       }
@@ -124,6 +134,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> leaveMarket() async {
+    _cancelScheduledLiveSync();
     await repository.leaveMarket();
     _products = const [];
     pendingChanges = 0;
@@ -148,6 +159,35 @@ class AppController extends ChangeNotifier {
     syncState = report.succeeded ? AppSyncState.idle : AppSyncState.error;
     await _reload();
     notifyListeners();
+    if (_liveSyncRequested) _scheduleLiveSync();
+  }
+
+  void _scheduleLiveSync() {
+    if (!isSyncConfigured || !hasMarketAccess) return;
+    _liveSyncRequested = true;
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = Timer(liveSyncDebounce, _runScheduledLiveSync);
+  }
+
+  void _runScheduledLiveSync() {
+    _liveSyncTimer = null;
+    if (!_liveSyncRequested) return;
+    if (!isSyncConfigured || !hasMarketAccess) {
+      _liveSyncRequested = false;
+      return;
+    }
+    if (syncState == AppSyncState.syncing) {
+      _liveSyncTimer = Timer(liveSyncDebounce, _runScheduledLiveSync);
+      return;
+    }
+    _liveSyncRequested = false;
+    unawaited(syncNow());
+  }
+
+  void _cancelScheduledLiveSync() {
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = null;
+    _liveSyncRequested = false;
   }
 
   Future<void> _reload() async {
@@ -158,7 +198,10 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _cancelScheduledLiveSync();
     _connectivitySubscription?.cancel();
+    _remoteChangesSubscription?.cancel();
+    unawaited(repository.dispose());
     super.dispose();
   }
 }

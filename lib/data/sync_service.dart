@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/market_session.dart';
@@ -19,13 +21,19 @@ class SyncService {
   final LocalDatabase _database;
   final LocalImageStorage _imageStorage = const LocalImageStorage();
   final SupabaseClient? _client;
+  final StreamController<void> _remoteChanges =
+      StreamController<void>.broadcast();
   bool _isRunning = false;
+  bool _isDisposed = false;
   MarketSession? _marketSession;
+  RealtimeChannel? _realtimeChannel;
+  String? _realtimeMarketId;
 
   bool get isConfigured => _client != null;
   MarketSession? get marketSession => _marketSession;
   bool get hasMarketAccess => _marketSession != null;
   bool get canEdit => _marketSession?.canEdit ?? false;
+  Stream<void> get remoteChanges => _remoteChanges.stream;
 
   Future<void> initialize() async {
     final client = _client;
@@ -55,6 +63,7 @@ class SyncService {
     } catch (_) {
       // A cached market remains usable offline. Server-side RLS still validates
       // its access level before the next synchronization.
+      await _restartRealtimeSubscription();
     }
   }
 
@@ -181,24 +190,6 @@ class SyncService {
       ..remove('image_url')
       ..['market_id'] = marketId
       ..['deleted_at'] = null;
-    await client.from('products').upsert(productMap);
-
-    // Der lokale Produktstand ist maßgeblich. Durch das vorherige Entfernen
-    // verschwinden auch Codes in Supabase, die im Formular gelöscht wurden.
-    // Gleichzeitig kann der aktive Code ohne Konflikt mit dem partiellen
-    // Unique-Index gewechselt werden.
-    await client
-        .from('product_codes')
-        .delete()
-        .eq('product_id', entry.productId);
-    if (codeMaps.isNotEmpty) {
-      await client.from('product_codes').upsert(codeMaps);
-    }
-
-    await client
-        .from('product_images')
-        .delete()
-        .eq('product_id', entry.productId);
     final remoteImages = <Map<String, dynamic>>[];
     for (final imageMap in imageMaps) {
       String? remoteUrl = imageMap['remote_url'] as String?;
@@ -274,6 +265,28 @@ class SyncService {
           ..['remote_thumbnail_url'] = remoteThumbnailUrl,
       );
     }
+
+    // Erst nach möglicherweise längeren Datei-Uploads werden die sichtbaren
+    // Datenbankzeilen ausgetauscht. Andere Geräte behalten bis dahin den
+    // letzten vollständigen Bildstand und erhalten anschließend ein Live-Event.
+    await client.from('products').upsert(productMap);
+
+    // Der lokale Produktstand ist maßgeblich. Durch das vorherige Entfernen
+    // verschwinden auch Codes in Supabase, die im Formular gelöscht wurden.
+    // Gleichzeitig kann der aktive Code ohne Konflikt mit dem partiellen
+    // Unique-Index gewechselt werden.
+    await client
+        .from('product_codes')
+        .delete()
+        .eq('product_id', entry.productId);
+    if (codeMaps.isNotEmpty) {
+      await client.from('product_codes').upsert(codeMaps);
+    }
+
+    await client
+        .from('product_images')
+        .delete()
+        .eq('product_id', entry.productId);
     if (remoteImages.isNotEmpty) {
       await client.from('product_images').upsert(remoteImages);
     }
@@ -421,11 +434,89 @@ class SyncService {
   Future<void> _persistMarketSession(MarketSession session) async {
     _setMarketSession(session);
     await _database.saveMarketSession(session);
+    await _restartRealtimeSubscription();
   }
 
   Future<void> _clearMarketSession() async {
     _setMarketSession(null);
+    await _stopRealtimeSubscription();
     await _database.clearMarketSession();
+  }
+
+  Future<void> _restartRealtimeSubscription() async {
+    final client = _client;
+    final marketId = _marketSession?.marketId;
+    if (_isDisposed || client == null || marketId == null) {
+      await _stopRealtimeSubscription();
+      return;
+    }
+    if (_realtimeChannel != null && _realtimeMarketId == marketId) return;
+
+    await _stopRealtimeSubscription();
+    if (_isDisposed || _marketSession?.marketId != marketId) return;
+
+    final filter = PostgresChangeFilter(
+      type: PostgresChangeFilterType.eq,
+      column: 'market_id',
+      value: marketId,
+    );
+    final channel = client.channel('market-products-$marketId');
+    _realtimeChannel = channel;
+    _realtimeMarketId = marketId;
+
+    void notifyRemoteChange(PostgresChangePayload _) {
+      if (!_isDisposed &&
+          identical(_realtimeChannel, channel) &&
+          _marketSession?.marketId == marketId) {
+        _remoteChanges.add(null);
+      }
+    }
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'products',
+          filter: filter,
+          callback: notifyRemoteChange,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'products',
+          filter: filter,
+          callback: notifyRemoteChange,
+        )
+        .subscribe((status, _) {
+          if (status == RealtimeSubscribeStatus.subscribed &&
+              !_isDisposed &&
+              identical(_realtimeChannel, channel) &&
+              _marketSession?.marketId == marketId) {
+            // Holt auch Änderungen nach, die zwischen dem letzten normalen
+            // Sync und dem erfolgreichen WebSocket-Abonnement passiert sind.
+            _remoteChanges.add(null);
+          }
+        });
+  }
+
+  Future<void> _stopRealtimeSubscription() async {
+    final channel = _realtimeChannel;
+    _realtimeChannel = null;
+    _realtimeMarketId = null;
+    if (channel == null) return;
+    try {
+      await _client?.removeChannel(channel);
+    } catch (_) {
+      // Der Kanal wird lokal bereits nicht mehr verwendet. Ein fehlgeschlagenes
+      // Abmelden darf Marktwechsel und Offline-Betrieb nicht blockieren.
+    }
+  }
+
+  Future<void> dispose() async {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    await _stopRealtimeSubscription();
+    await _remoteChanges.close();
   }
 }
 
