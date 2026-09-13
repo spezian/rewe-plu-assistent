@@ -4,18 +4,18 @@ import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
+
+import 'image_optimizer.dart';
+import 'imported_product_image.dart';
 
 class LocalImageStorage {
   const LocalImageStorage();
 
-  Future<String> importPickedImage(XFile pickedFile) async {
-    final bytes = await pickedFile.readAsBytes();
-    final mimeType = pickedFile.mimeType ?? _mimeTypeForPath(pickedFile.name);
-    return _dataUri(mimeType, bytes);
+  Future<ImportedProductImage> importPickedImage(XFile pickedFile) async {
+    return _storeOptimized(await pickedFile.readAsBytes());
   }
 
-  Future<String> importImageFromUrl(String rawUrl) async {
+  Future<ImportedProductImage> importImageFromUrl(String rawUrl) async {
     final uri = _validatedImageUri(rawUrl);
     final response = await http.get(uri).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -27,7 +27,7 @@ class LocalImageStorage {
     if (!mimeType.startsWith('image/')) {
       throw const FormatException('Die Adresse verweist nicht auf ein Bild.');
     }
-    return _dataUri(mimeType, response.bodyBytes);
+    return _storeOptimized(response.bodyBytes);
   }
 
   ImageProvider<Object>? providerFor(String? reference) {
@@ -50,6 +50,14 @@ class LocalImageStorage {
       _ => '.jpg',
     };
   }
+
+  Future<ImportedProductImage> _storeOptimized(Uint8List sourceBytes) async {
+    final optimized = await optimizeProductImage(sourceBytes);
+    return ImportedProductImage(
+      originalReference: _dataUri('image/jpeg', optimized.original),
+      thumbnailReference: _dataUri('image/jpeg', optimized.thumbnail),
+    );
+  }
 }
 
 Uri _validatedImageUri(String rawUrl) {
@@ -66,14 +74,6 @@ Uri _validatedImageUri(String rawUrl) {
 
 String _mimeType(String? contentType) =>
     (contentType ?? '').split(';').first.toLowerCase();
-
-String _mimeTypeForPath(String fileName) =>
-    switch (path.extension(fileName).toLowerCase()) {
-      '.png' => 'image/png',
-      '.webp' => 'image/webp',
-      '.gif' => 'image/gif',
-      _ => 'image/jpeg',
-    };
 
 String _dataUri(String mimeType, Uint8List bytes) =>
     'data:$mimeType;base64,${base64Encode(bytes)}';

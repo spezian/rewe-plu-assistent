@@ -202,33 +202,76 @@ class SyncService {
     final remoteImages = <Map<String, dynamic>>[];
     for (final imageMap in imageMaps) {
       String? remoteUrl = imageMap['remote_url'] as String?;
+      String? remoteThumbnailUrl = imageMap['remote_thumbnail_url'] as String?;
       final localPath = imageMap['local_path'] as String?;
       if (localPath != null && localPath.isNotEmpty) {
         final bytes = await _imageStorage.readBytes(localPath);
         if (bytes != null) {
           final extension = _imageStorage.extensionFor(localPath);
-          final remotePath =
-              '$marketId/${entry.productId}/${imageMap['id']}$extension';
+          final remotePath = storagePathForProductImage(
+            currentUrl: remoteUrl,
+            marketId: marketId,
+            productId: entry.productId,
+            fileStem: imageMap['id'] as String,
+            fallbackExtension: extension,
+          );
           await client.storage
               .from('product-images')
               .uploadBinary(
                 remotePath,
                 bytes,
-                fileOptions: const FileOptions(upsert: true),
+                fileOptions: FileOptions(
+                  upsert: true,
+                  contentType: _contentTypeForExtension(extension),
+                ),
               );
           remoteUrl = client.storage
               .from('product-images')
               .getPublicUrl(remotePath);
-          await _database.updateRemoteImageUrl(
-            imageMap['id'] as String,
-            remoteUrl,
-          );
         }
+      }
+      final localThumbnailPath = imageMap['local_thumbnail_path'] as String?;
+      if (localThumbnailPath != null && localThumbnailPath.isNotEmpty) {
+        final thumbnailBytes = await _imageStorage.readBytes(
+          localThumbnailPath,
+        );
+        if (thumbnailBytes != null) {
+          final extension = _imageStorage.extensionFor(localThumbnailPath);
+          final remotePath = storagePathForProductImage(
+            currentUrl: remoteThumbnailUrl,
+            marketId: marketId,
+            productId: entry.productId,
+            fileStem: '${imageMap['id']}_thumb',
+            fallbackExtension: extension,
+          );
+          await client.storage
+              .from('product-images')
+              .uploadBinary(
+                remotePath,
+                thumbnailBytes,
+                fileOptions: FileOptions(
+                  upsert: true,
+                  contentType: _contentTypeForExtension(extension),
+                ),
+              );
+          remoteThumbnailUrl = client.storage
+              .from('product-images')
+              .getPublicUrl(remotePath);
+        }
+      }
+      if (remoteUrl != null) {
+        await _database.updateRemoteImageUrls(
+          imageMap['id'] as String,
+          imageUrl: remoteUrl,
+          thumbnailUrl: remoteThumbnailUrl,
+        );
       }
       remoteImages.add(
         imageMap
           ..remove('local_path')
-          ..['remote_url'] = remoteUrl,
+          ..remove('local_thumbnail_path')
+          ..['remote_url'] = remoteUrl
+          ..['remote_thumbnail_url'] = remoteThumbnailUrl,
       );
     }
     if (remoteImages.isNotEmpty) {
@@ -265,27 +308,36 @@ class SyncService {
 
       final existing = await _database.getProduct(productId);
       final remoteUpdated = DateTime.parse(productMap['updated_at'] as String);
-      if (existing != null &&
-          !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
-        continue;
-      }
-      final codes = (codeMapsByProduct[productId] ?? const [])
-          .map(ProductCode.fromRemoteMap)
-          .toList();
       final existingPaths = {
         for (final image in existing?.images ?? const <ProductImageData>[])
-          image.id: image.localPath,
+          image.id: (
+            original: image.localPath,
+            thumbnail: image.localThumbnailPath,
+          ),
       };
       final images =
           (imageMapsByProduct[productId] ?? const [])
               .map(
                 (imageMap) => ProductImageData.fromRemoteMap(
                   imageMap,
-                  existingLocalPath: existingPaths[imageMap['id']],
+                  existingLocalPath: existingPaths[imageMap['id']]?.original,
+                  existingLocalThumbnailPath:
+                      existingPaths[imageMap['id']]?.thumbnail,
                 ),
               )
               .toList()
             ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      if (existing != null &&
+          !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
+        // Bildzeilen können sich unabhängig vom Produkt-Zeitstempel ändern.
+        // Deshalb wird ihre lokale Kopie auch bei unverändertem Produkt
+        // aktualisiert.
+        await _database.applyRemoteImages(productId, images);
+        continue;
+      }
+      final codes = (codeMapsByProduct[productId] ?? const [])
+          .map(ProductCode.fromRemoteMap)
+          .toList();
       await _database.applyRemoteProduct(
         Product.fromRemoteMap(productMap, codes, images: images),
       );
@@ -299,6 +351,10 @@ class SyncService {
     }
     if (text.contains('MARKET_PIN_DENIED')) {
       return 'PIN ist falsch.';
+    }
+    if (text.contains('remote_thumbnail_url')) {
+      return 'Die Cloud-Datenbank unterstützt Bild-Thumbnails noch nicht. '
+          'Bitte das aktuelle supabase/schema.sql im SQL Editor ausführen.';
     }
     final normalized = text.toLowerCase();
     if (normalized.contains('row-level security') ||
@@ -342,3 +398,37 @@ class SyncService {
     await _database.clearMarketSession();
   }
 }
+
+String storagePathForProductImage({
+  required String? currentUrl,
+  required String marketId,
+  required String productId,
+  required String fileStem,
+  required String fallbackExtension,
+}) {
+  final uri = currentUrl == null ? null : Uri.tryParse(currentUrl);
+  final segments = uri?.pathSegments ?? const <String>[];
+  final bucketIndex = segments.indexOf('product-images');
+  if (bucketIndex >= 0) {
+    final objectSegments = segments.skip(bucketIndex + 1).toList();
+    if (objectSegments.length == 3 &&
+        objectSegments[0] == marketId &&
+        objectSegments[1] == productId) {
+      final fileName = objectSegments[2];
+      final extensionIndex = fileName.lastIndexOf('.');
+      final existingStem = extensionIndex < 0
+          ? fileName
+          : fileName.substring(0, extensionIndex);
+      if (existingStem == fileStem) return objectSegments.join('/');
+    }
+  }
+  return '$marketId/$productId/$fileStem$fallbackExtension';
+}
+
+String _contentTypeForExtension(String extension) =>
+    switch (extension.toLowerCase()) {
+      '.png' => 'image/png',
+      '.webp' => 'image/webp',
+      '.gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };

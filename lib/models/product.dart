@@ -159,7 +159,9 @@ class ProductImageData {
     required this.sortOrder,
     required this.createdAt,
     this.localPath,
+    this.localThumbnailPath,
     this.remoteUrl,
+    this.remoteThumbnailUrl,
     this.sourcePageUrl,
     this.attribution,
     this.license,
@@ -168,7 +170,9 @@ class ProductImageData {
   final String id;
   final String productId;
   final String? localPath;
+  final String? localThumbnailPath;
   final String? remoteUrl;
+  final String? remoteThumbnailUrl;
   final String? sourcePageUrl;
   final String? attribution;
   final String? license;
@@ -179,7 +183,9 @@ class ProductImageData {
     String? id,
     String? productId,
     String? localPath,
+    String? localThumbnailPath,
     String? remoteUrl,
+    String? remoteThumbnailUrl,
     String? sourcePageUrl,
     String? attribution,
     String? license,
@@ -189,7 +195,9 @@ class ProductImageData {
     id: id ?? this.id,
     productId: productId ?? this.productId,
     localPath: localPath ?? this.localPath,
+    localThumbnailPath: localThumbnailPath ?? this.localThumbnailPath,
     remoteUrl: remoteUrl ?? this.remoteUrl,
+    remoteThumbnailUrl: remoteThumbnailUrl ?? this.remoteThumbnailUrl,
     sourcePageUrl: sourcePageUrl ?? this.sourcePageUrl,
     attribution: attribution ?? this.attribution,
     license: license ?? this.license,
@@ -201,7 +209,9 @@ class ProductImageData {
     'id': id,
     'product_id': productId,
     'local_path': localPath,
+    'local_thumbnail_path': localThumbnailPath,
     'remote_url': remoteUrl,
+    'remote_thumbnail_url': remoteThumbnailUrl,
     'source_page_url': sourcePageUrl,
     'attribution': attribution,
     'license': license,
@@ -213,6 +223,7 @@ class ProductImageData {
     'id': id,
     'product_id': productId,
     'remote_url': remoteUrl,
+    'remote_thumbnail_url': remoteThumbnailUrl,
     'source_page_url': sourcePageUrl,
     'attribution': attribution,
     'license': license,
@@ -227,7 +238,9 @@ class ProductImageData {
         id: map['id']! as String,
         productId: map['product_id']! as String,
         localPath: map['local_path'] as String?,
+        localThumbnailPath: map['local_thumbnail_path'] as String?,
         remoteUrl: map['remote_url'] as String?,
+        remoteThumbnailUrl: map['remote_thumbnail_url'] as String?,
         sourcePageUrl: map['source_page_url'] as String?,
         attribution: map['attribution'] as String?,
         license: map['license'] as String?,
@@ -238,11 +251,14 @@ class ProductImageData {
   factory ProductImageData.fromRemoteMap(
     Map<String, dynamic> map, {
     String? existingLocalPath,
+    String? existingLocalThumbnailPath,
   }) => ProductImageData(
     id: map['id'] as String,
     productId: map['product_id'] as String,
     localPath: existingLocalPath,
+    localThumbnailPath: existingLocalThumbnailPath,
     remoteUrl: map['remote_url'] as String?,
+    remoteThumbnailUrl: map['remote_thumbnail_url'] as String?,
     sourcePageUrl: map['source_page_url'] as String?,
     attribution: map['attribution'] as String?,
     license: map['license'] as String?,
@@ -283,6 +299,8 @@ class Product {
   ProductImageData? get primaryImage => images.isEmpty ? null : images.first;
   String? get imagePath => primaryImage?.localPath;
   String? get imageUrl => primaryImage?.remoteUrl;
+  String? get thumbnailPath => primaryImage?.localThumbnailPath;
+  String? get thumbnailUrl => primaryImage?.remoteThumbnailUrl;
   bool get isObsolete => activeCode == null;
 
   ProductCode? get activeCode {

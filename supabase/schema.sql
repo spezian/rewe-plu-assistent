@@ -89,6 +89,7 @@ create table if not exists public.product_images (
   product_id uuid not null references public.products(id) on delete cascade,
   owner_id uuid,
   remote_url text,
+  remote_thumbnail_url text,
   source_page_url text,
   attribution text,
   license text,
@@ -96,6 +97,8 @@ create table if not exists public.product_images (
   created_at timestamptz not null
 );
 
+alter table public.product_images
+  add column if not exists remote_thumbnail_url text;
 alter table public.product_images
   add column if not exists source_page_url text;
 alter table public.product_images

@@ -48,10 +48,10 @@ class ProductRepository {
 
   Future<int> pendingCount() => _database.pendingCount();
 
-  Future<String> importPickedImage(XFile pickedFile) =>
+  Future<ImportedProductImage> importPickedImage(XFile pickedFile) =>
       _imageStorage.importPickedImage(pickedFile);
 
-  Future<String> importImageFromUrl(String rawUrl) =>
+  Future<ImportedProductImage> importImageFromUrl(String rawUrl) =>
       _imageStorage.importImageFromUrl(rawUrl);
 
   void _requireEditor() {

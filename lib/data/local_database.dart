@@ -33,7 +33,7 @@ class LocalDatabase {
     final databasePath = await prepareDatabasePath('rewe_plu_assistent.db');
     _database = await openDatabase(
       databasePath,
-      version: 6,
+      version: 7,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -73,7 +73,9 @@ class LocalDatabase {
             id TEXT PRIMARY KEY,
             product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
             local_path TEXT,
+            local_thumbnail_path TEXT,
             remote_url TEXT,
+            remote_thumbnail_url TEXT,
             source_page_url TEXT,
             attribution TEXT,
             license TEXT,
@@ -189,6 +191,16 @@ class LocalDatabase {
               value TEXT NOT NULL
             )
           ''');
+        }
+        if (oldVersion < 7) {
+          await database.execute(
+            'ALTER TABLE product_images '
+            'ADD COLUMN local_thumbnail_path TEXT',
+          );
+          await database.execute(
+            'ALTER TABLE product_images '
+            'ADD COLUMN remote_thumbnail_url TEXT',
+          );
         }
       },
     );
@@ -352,6 +364,26 @@ class LocalDatabase {
     await _db.transaction((transaction) => _writeProduct(transaction, product));
   }
 
+  Future<void> applyRemoteImages(
+    String productId,
+    List<ProductImageData> images,
+  ) async {
+    await _db.transaction((transaction) async {
+      await transaction.delete(
+        'product_images',
+        where: 'product_id = ?',
+        whereArgs: [productId],
+      );
+      for (final image in images) {
+        await transaction.insert(
+          'product_images',
+          image.toDatabaseMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   Future<void> _writeProduct(
     DatabaseExecutor transaction,
     Product product,
@@ -471,10 +503,14 @@ class LocalDatabase {
     [error.toString(), id],
   );
 
-  Future<void> updateRemoteImageUrl(String imageId, String imageUrl) async {
+  Future<void> updateRemoteImageUrls(
+    String imageId, {
+    required String imageUrl,
+    String? thumbnailUrl,
+  }) async {
     await _db.update(
       'product_images',
-      {'remote_url': imageUrl},
+      {'remote_url': imageUrl, 'remote_thumbnail_url': thumbnailUrl},
       where: 'id = ?',
       whereArgs: [imageId],
     );
