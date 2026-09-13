@@ -103,6 +103,9 @@ class AppController extends ChangeNotifier {
   Future<ImportedProductImage> importImageFromUrl(String url) =>
       repository.importImageFromUrl(url);
 
+  Future<String?> cacheRemoteOriginal(ProductImageData image) =>
+      repository.cacheRemoteOriginal(image);
+
   Future<void> enterMarket({required String marketNumber, String? pin}) async {
     await repository.enterMarket(marketNumber: marketNumber, pin: pin);
     syncState = AppSyncState.idle;

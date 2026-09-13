@@ -19,6 +19,8 @@ mit Supabase abgeglichen.
 - mehrere Produktfotos mit Vollbild- und Zoomansicht
 - komprimierte Produktfotos und separat gespeicherte Miniaturbilder für kurze
   Ladezeiten
+- Cloud-Miniaturbilder werden beim Synchronisieren dauerhaft lokal gespeichert;
+  Cloud-Vollbilder nach dem ersten Öffnen in der Galerie
 - Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
   Unsplash
 - Barcode-Erfassung per Kamera
@@ -97,7 +99,7 @@ Für ein Release-APK/Debug-APK gilt:
 ```bash
 flutter build apk \
   --dart-define=SUPABASE_URL=https://DEIN-PROJEKT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=DEIN_ANON_KEY \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
 

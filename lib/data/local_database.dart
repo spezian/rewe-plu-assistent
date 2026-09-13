@@ -516,6 +516,35 @@ class LocalDatabase {
     );
   }
 
+  Future<void> updateLocalImageCache(
+    String imageId, {
+    String? originalPath,
+    String? thumbnailPath,
+  }) async {
+    final values = <String, Object?>{
+      'local_path': ?originalPath,
+      'local_thumbnail_path': ?thumbnailPath,
+    };
+    if (values.isEmpty) return;
+    await _db.update(
+      'product_images',
+      values,
+      where: 'id = ?',
+      whereArgs: [imageId],
+    );
+  }
+
+  Future<String?> getLocalOriginalImagePath(String imageId) async {
+    final rows = await _db.query(
+      'product_images',
+      columns: const ['local_path'],
+      where: 'id = ?',
+      whereArgs: [imageId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single['local_path'] as String?;
+  }
+
   String _requireActiveMarketId() {
     final marketId = _activeMarketId;
     if (marketId == null) {

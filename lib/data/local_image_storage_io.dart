@@ -26,6 +26,22 @@ class LocalImageStorage {
     return _storeOptimized(response.bodyBytes);
   }
 
+  Future<String> cacheImageFromUrl(
+    String rawUrl, {
+    required bool thumbnail,
+  }) async {
+    final response = await _downloadImage(rawUrl);
+    final extension = _extensionForMimeType(response.headers['content-type']);
+    final destination = await _newImagePath(
+      extension,
+      directoryName: thumbnail
+          ? 'product_image_cache/thumbnails'
+          : 'product_image_cache/originals',
+    );
+    await File(destination).writeAsBytes(response.bodyBytes, flush: true);
+    return destination;
+  }
+
   ImageProvider<Object>? providerFor(String? reference) {
     if (reference == null || !File(reference).existsSync()) return null;
     return FileImage(File(reference));
@@ -99,3 +115,11 @@ Uri _validatedImageUri(String rawUrl) {
 
 String _mimeType(String? contentType) =>
     (contentType ?? '').split(';').first.toLowerCase();
+
+String _extensionForMimeType(String? contentType) =>
+    switch (_mimeType(contentType)) {
+      'image/png' => '.png',
+      'image/webp' => '.webp',
+      'image/gif' => '.gif',
+      _ => '.jpg',
+    };

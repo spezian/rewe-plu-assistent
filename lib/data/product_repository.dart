@@ -54,6 +54,24 @@ class ProductRepository {
   Future<ImportedProductImage> importImageFromUrl(String rawUrl) =>
       _imageStorage.importImageFromUrl(rawUrl);
 
+  Future<String?> cacheRemoteOriginal(ProductImageData image) async {
+    final storedPath = await _database.getLocalOriginalImagePath(image.id);
+    for (final existingPath in [image.localPath, storedPath]) {
+      if (existingPath != null &&
+          await _imageStorage.readBytes(existingPath) != null) {
+        return existingPath;
+      }
+    }
+    final remoteUrl = image.remoteUrl;
+    if (remoteUrl == null || remoteUrl.isEmpty) return null;
+    final localPath = await _imageStorage.cacheImageFromUrl(
+      remoteUrl,
+      thumbnail: false,
+    );
+    await _database.updateLocalImageCache(image.id, originalPath: localPath);
+    return localPath;
+  }
+
   void _requireEditor() {
     if (!canEdit) {
       throw StateError('Dieser Marktzugang ist schreibgeschützt.');

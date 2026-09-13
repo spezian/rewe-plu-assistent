@@ -16,18 +16,19 @@ class LocalImageStorage {
   }
 
   Future<ImportedProductImage> importImageFromUrl(String rawUrl) async {
-    final uri = _validatedImageUri(rawUrl);
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError(
-        'Bild konnte nicht geladen werden (${response.statusCode}).',
-      );
-    }
-    final mimeType = _mimeType(response.headers['content-type']);
-    if (!mimeType.startsWith('image/')) {
-      throw const FormatException('Die Adresse verweist nicht auf ein Bild.');
-    }
+    final response = await _downloadImage(rawUrl);
     return _storeOptimized(response.bodyBytes);
+  }
+
+  Future<String> cacheImageFromUrl(
+    String rawUrl, {
+    required bool thumbnail,
+  }) async {
+    final response = await _downloadImage(rawUrl);
+    return _dataUri(
+      _mimeType(response.headers['content-type']),
+      response.bodyBytes,
+    );
   }
 
   ImageProvider<Object>? providerFor(String? reference) {
@@ -58,6 +59,21 @@ class LocalImageStorage {
       thumbnailReference: _dataUri('image/jpeg', optimized.thumbnail),
     );
   }
+}
+
+Future<http.Response> _downloadImage(String rawUrl) async {
+  final uri = _validatedImageUri(rawUrl);
+  final response = await http.get(uri).timeout(const Duration(seconds: 15));
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw StateError(
+      'Bild konnte nicht geladen werden (${response.statusCode}).',
+    );
+  }
+  final mimeType = _mimeType(response.headers['content-type']);
+  if (!mimeType.startsWith('image/')) {
+    throw const FormatException('Die Adresse verweist nicht auf ein Bild.');
+  }
+  return response;
 }
 
 Uri _validatedImageUri(String rawUrl) {
