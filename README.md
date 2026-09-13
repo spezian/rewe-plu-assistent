@@ -89,7 +89,8 @@ Nach dem Einspielen des aktualisierten `schema.sql` den Markt einmal mit
 Bearbeitungszugriff öffnen und synchronisieren. Bilder ohne gespeicherte
 Thumbnail-URL werden dabei heruntergeladen, optimiert und zusammen mit ihrem
 Thumbnail erneut hochgeladen. Bereits migrierte Bilder werden übersprungen;
-ein abgebrochener Lauf wird beim nächsten Sync fortgesetzt.
+ein abgebrochener Lauf wird beim nächsten Sync fortgesetzt. Fehler eines
+einzelnen Bildes blockieren die übrigen Migrationskandidaten nicht.
 
 ## Run/Build
 

@@ -364,6 +364,26 @@ class LocalDatabase {
     await _db.transaction((transaction) => _writeProduct(transaction, product));
   }
 
+  Future<void> applyRemoteImages(
+    String productId,
+    List<ProductImageData> images,
+  ) async {
+    await _db.transaction((transaction) async {
+      await transaction.delete(
+        'product_images',
+        where: 'product_id = ?',
+        whereArgs: [productId],
+      );
+      for (final image in images) {
+        await transaction.insert(
+          'product_images',
+          image.toDatabaseMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   Future<void> _writeProduct(
     DatabaseExecutor transaction,
     Product product,

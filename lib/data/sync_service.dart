@@ -128,8 +128,14 @@ class SyncService {
       if (canEdit) await _pushPendingChanges();
       await _pullRemoteChanges();
       if (canEdit) {
-        await _migrateLegacyRemoteImages();
+        final migrationFailures = await _migrateLegacyRemoteImages();
         await _pushPendingChanges();
+        if (migrationFailures.isNotEmpty) {
+          throw StateError(
+            '${migrationFailures.length} Bild(er) konnten nicht migriert '
+            'werden: ${migrationFailures.take(3).join('; ')}',
+          );
+        }
       }
       return SyncReport(pendingCount: await _database.pendingCount());
     } catch (error) {
@@ -283,7 +289,8 @@ class SyncService {
     }
   }
 
-  Future<void> _migrateLegacyRemoteImages() async {
+  Future<List<String>> _migrateLegacyRemoteImages() async {
+    final failures = <String>[];
     final products = await _database.getProducts();
     for (final product in products) {
       var changed = false;
@@ -294,7 +301,14 @@ class SyncService {
           continue;
         }
 
-        final migrated = await _prepareLegacyImage(productImage);
+        ImportedProductImage? migrated;
+        try {
+          migrated = await _prepareLegacyImage(productImage);
+        } catch (error) {
+          failures.add('${productImage.id}: $error');
+          images.add(productImage);
+          continue;
+        }
         if (migrated == null) {
           images.add(productImage);
           continue;
@@ -314,6 +328,7 @@ class SyncService {
         );
       }
     }
+    return failures;
   }
 
   Future<ImportedProductImage?> _prepareLegacyImage(
@@ -379,13 +394,6 @@ class SyncService {
 
       final existing = await _database.getProduct(productId);
       final remoteUpdated = DateTime.parse(productMap['updated_at'] as String);
-      if (existing != null &&
-          !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
-        continue;
-      }
-      final codes = (codeMapsByProduct[productId] ?? const [])
-          .map(ProductCode.fromRemoteMap)
-          .toList();
       final existingPaths = {
         for (final image in existing?.images ?? const <ProductImageData>[])
           image.id: (
@@ -405,6 +413,17 @@ class SyncService {
               )
               .toList()
             ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      if (existing != null &&
+          !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
+        // Bildzeilen können sich unabhängig vom Produkt-Zeitstempel ändern.
+        // Ohne diesen Abgleich würden einzelne alte Cloud-Bilder nie als
+        // Migrationskandidaten in der lokalen Datenbank erscheinen.
+        await _database.applyRemoteImages(productId, images);
+        continue;
+      }
+      final codes = (codeMapsByProduct[productId] ?? const [])
+          .map(ProductCode.fromRemoteMap)
+          .toList();
       await _database.applyRemoteProduct(
         Product.fromRemoteMap(productMap, codes, images: images),
       );
