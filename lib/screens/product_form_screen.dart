@@ -54,7 +54,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _isOrganic = product?.isOrganic ?? false;
     _isPromotion = product?.isPromotion ?? false;
     _images.addAll(product?.images ?? const []);
-    if (product == null || product.codes.isEmpty) {
+    if (product == null) {
       _codes.add(_CodeDraft.newCode(isActive: true));
     } else {
       _codes.addAll(product.codes.map(_CodeDraft.fromCode));
@@ -218,11 +218,30 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
+            if (_codes.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.code_off_outlined),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Dieses Produkt hat keinen Code und wird als '
+                          'veraltet angezeigt.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             for (var index = 0; index < _codes.length; index++) ...[
               _CodeEditorCard(
                 key: ValueKey(_codes[index].draftId),
                 draft: _codes[index],
-                canRemove: _codes[index].original == null && _codes.length > 1,
+                canRemove: true,
                 onActiveChanged: (selected) => selected
                     ? _makeActive(index)
                     : setState(() => _codes[index].isActive = false),
@@ -288,7 +307,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   void _removeCode(int index) {
-    if (_codes[index].original != null || _codes.length <= 1) return;
     setState(() {
       _codes.removeAt(index).dispose();
     });
@@ -611,9 +629,9 @@ class _CodeEditorCard extends StatelessWidget {
                 const Spacer(),
                 if (canRemove)
                   IconButton(
-                    tooltip: 'Eintrag entfernen',
+                    tooltip: 'Code entfernen',
                     onPressed: onRemove,
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.delete_outline),
                   ),
               ],
             ),
