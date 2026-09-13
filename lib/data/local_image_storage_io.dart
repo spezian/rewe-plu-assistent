@@ -26,12 +26,6 @@ class LocalImageStorage {
     return _storeOptimized(response.bodyBytes);
   }
 
-  Future<ImportedProductImage?> optimizeExistingImage(String reference) async {
-    final file = File(reference);
-    if (!await file.exists()) return null;
-    return _storeOptimized(await file.readAsBytes());
-  }
-
   ImageProvider<Object>? providerFor(String? reference) {
     if (reference == null || !File(reference).existsSync()) return null;
     return FileImage(File(reference));

@@ -23,7 +23,6 @@ class ProductRepository {
   Future<void> initialize() async {
     await _database.initialize();
     await _sync.initialize();
-    await _optimizeLegacyImages();
   }
 
   Future<List<Product>> getProducts() => _database.getProducts();
@@ -54,50 +53,6 @@ class ProductRepository {
 
   Future<ImportedProductImage> importImageFromUrl(String rawUrl) =>
       _imageStorage.importImageFromUrl(rawUrl);
-
-  Future<void> _optimizeLegacyImages() async {
-    final products = await _database.getProducts();
-    for (final product in products) {
-      var changed = false;
-      final images = <ProductImageData>[];
-      for (final image in product.images) {
-        final localPath = image.localPath;
-        if (localPath == null || image.localThumbnailPath != null) {
-          images.add(image);
-          continue;
-        }
-        try {
-          final optimized = await _imageStorage.optimizeExistingImage(
-            localPath,
-          );
-          if (optimized == null) {
-            images.add(image);
-            continue;
-          }
-          images.add(
-            image.copyWith(
-              localPath: optimized.originalReference,
-              localThumbnailPath: optimized.thumbnailReference,
-            ),
-          );
-          changed = true;
-        } catch (_) {
-          // Ein nicht unterstütztes Altbild darf den App-Start nicht blockieren.
-          images.add(image);
-        }
-      }
-      if (changed) {
-        final enqueue = _sync.canEdit;
-        await _database.saveProduct(
-          product.copyWith(
-            images: images,
-            updatedAt: enqueue ? DateTime.now() : product.updatedAt,
-          ),
-          enqueue: enqueue,
-        );
-      }
-    }
-  }
 
   void _requireEditor() {
     if (!canEdit) {

@@ -127,16 +127,6 @@ class SyncService {
       }
       if (canEdit) await _pushPendingChanges();
       await _pullRemoteChanges();
-      if (canEdit) {
-        final migrationFailures = await _migrateLegacyRemoteImages();
-        await _pushPendingChanges();
-        if (migrationFailures.isNotEmpty) {
-          throw StateError(
-            '${migrationFailures.length} Bild(er) konnten nicht migriert '
-            'werden: ${migrationFailures.take(3).join('; ')}',
-          );
-        }
-      }
       return SyncReport(pendingCount: await _database.pendingCount());
     } catch (error) {
       return SyncReport(
@@ -289,82 +279,6 @@ class SyncService {
     }
   }
 
-  Future<List<String>> _migrateLegacyRemoteImages() async {
-    final failures = <String>[];
-    final products = await _database.getProducts();
-    for (final product in products) {
-      var changed = false;
-      final images = <ProductImageData>[];
-      for (final productImage in product.images) {
-        if (productImage.remoteThumbnailUrl?.isNotEmpty == true) {
-          images.add(productImage);
-          continue;
-        }
-
-        ImportedProductImage? migrated;
-        try {
-          migrated = await _prepareLegacyImage(productImage);
-        } catch (error) {
-          failures.add('${productImage.id}: $error');
-          images.add(productImage);
-          continue;
-        }
-        if (migrated == null) {
-          images.add(productImage);
-          continue;
-        }
-        images.add(
-          productImage.copyWith(
-            localPath: migrated.originalReference,
-            localThumbnailPath: migrated.thumbnailReference,
-          ),
-        );
-        changed = true;
-      }
-
-      if (changed) {
-        await _database.saveProduct(
-          product.copyWith(images: images, updatedAt: DateTime.now()),
-        );
-      }
-    }
-    return failures;
-  }
-
-  Future<ImportedProductImage?> _prepareLegacyImage(
-    ProductImageData productImage,
-  ) async {
-    final localPath = productImage.localPath;
-    final localThumbnailPath = productImage.localThumbnailPath;
-    if (localPath != null && localThumbnailPath != null) {
-      final localFiles = await Future.wait([
-        _imageStorage.readBytes(localPath),
-        _imageStorage.readBytes(localThumbnailPath),
-      ]);
-      if (localFiles.every((bytes) => bytes != null)) {
-        return ImportedProductImage(
-          originalReference: localPath,
-          thumbnailReference: localThumbnailPath,
-        );
-      }
-    }
-
-    if (localPath != null) {
-      try {
-        final migrated = await _imageStorage.optimizeExistingImage(localPath);
-        if (migrated != null) return migrated;
-      } catch (_) {
-        if (productImage.remoteUrl?.isNotEmpty != true) rethrow;
-        // Eine beschädigte lokale Kopie kann aus dem Cloud-Original erneuert
-        // werden.
-      }
-    }
-
-    final remoteUrl = productImage.remoteUrl;
-    if (remoteUrl == null || remoteUrl.isEmpty) return null;
-    return _imageStorage.importImageFromUrl(remoteUrl);
-  }
-
   Future<void> _pullRemoteChanges() async {
     final client = _client!;
     final rawProducts = await client.from('products').select();
@@ -416,8 +330,8 @@ class SyncService {
       if (existing != null &&
           !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
         // Bildzeilen können sich unabhängig vom Produkt-Zeitstempel ändern.
-        // Ohne diesen Abgleich würden einzelne alte Cloud-Bilder nie als
-        // Migrationskandidaten in der lokalen Datenbank erscheinen.
+        // Deshalb wird ihre lokale Kopie auch bei unverändertem Produkt
+        // aktualisiert.
         await _database.applyRemoteImages(productId, images);
         continue;
       }

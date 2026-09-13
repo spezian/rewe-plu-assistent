@@ -30,11 +30,6 @@ class LocalImageStorage {
     return _storeOptimized(response.bodyBytes);
   }
 
-  Future<ImportedProductImage?> optimizeExistingImage(String reference) async {
-    final bytes = _bytesFromDataUri(reference);
-    return bytes == null ? null : _storeOptimized(bytes);
-  }
-
   ImageProvider<Object>? providerFor(String? reference) {
     final bytes = reference == null ? null : _bytesFromDataUri(reference);
     return bytes == null ? null : MemoryImage(bytes);
