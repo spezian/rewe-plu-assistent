@@ -45,7 +45,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameController.text = product?.name ?? '';
     _aliasesController.text = product?.aliases.join(', ') ?? '';
     _descriptionController.text = product?.description ?? '';
-    _category = product?.category ?? productCategories.first;
+    final initialCategory = normalizeProductCategory(
+      product?.category ?? productCategories.first,
+    );
+    _category = productCategories.contains(initialCategory)
+        ? initialCategory
+        : 'Sonstiges';
     _isOrganic = product?.isOrganic ?? false;
     _isPromotion = product?.isPromotion ?? false;
     _images.addAll(product?.images ?? const []);
@@ -316,15 +321,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               onTap: () => Navigator.pop(context, 'gallery'),
             ),
             ListTile(
-              enabled: _nameController.text.trim().isNotEmpty && unsplashAccessKey.isNotEmpty,
+              enabled:
+                  _nameController.text.trim().isNotEmpty &&
+                  unsplashAccessKey.isNotEmpty,
               leading: const Icon(Icons.image_search),
               title: const Text('Bilder im Internet vorschlagen'),
               subtitle: Text(
                 _nameController.text.trim().isEmpty
                     ? 'Zuerst einen Produktnamen eingeben'
                     : unsplashAccessKey.isEmpty
-                        ? 'Kein Unsplash-Zugriffsschlüssel konfiguriert!'
-                        : 'Passende Bilder für „${_nameController.text.trim()}“',
+                    ? 'Kein Unsplash-Zugriffsschlüssel konfiguriert!'
+                    : 'Passende Bilder für „${_nameController.text.trim()}“',
               ),
               onTap: _nameController.text.trim().isEmpty
                   ? null
@@ -527,7 +534,9 @@ class _CodeDraft {
 
   String get normalizedValue {
     final raw = valueController.text.trim();
-    if (type != ProductCodeType.price && type != ProductCodeType.cashierTile) return raw.replaceAll(' ', '');
+    if (type != ProductCodeType.price && type != ProductCodeType.cashierTile) {
+      return raw.replaceAll(' ', '');
+    }
     final price = double.tryParse(raw.replaceAll(',', '.'));
     return price == null ? raw.replaceAll(',', '.') : price.toStringAsFixed(2);
   }

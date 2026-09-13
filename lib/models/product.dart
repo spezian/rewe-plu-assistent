@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:intl/intl.dart';
 
+import '../core/app_constants.dart';
+
 enum ProductCodeType { plu, price, barcode, cashierTile }
 
 extension ProductCodeTypeX on ProductCodeType {
@@ -363,7 +365,7 @@ class Product {
   ) => Product(
     id: map['id']! as String,
     name: map['name']! as String,
-    category: map['category']! as String,
+    category: normalizeProductCategory(map['category']! as String),
     description: map['description'] as String? ?? '',
     aliases: _decodeAliases(map['aliases']),
     images: images,
@@ -382,7 +384,7 @@ class Product {
   }) => Product(
     id: map['id'] as String,
     name: map['name'] as String,
-    category: map['category'] as String,
+    category: normalizeProductCategory(map['category'] as String),
     description: map['description'] as String? ?? '',
     aliases: (map['aliases'] as List<dynamic>? ?? const [])
         .map((alias) => alias.toString())

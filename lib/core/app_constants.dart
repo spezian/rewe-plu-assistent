@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 const productCategories = <String>[
   'Obst',
   'Gemüse',
+  'Pilze',
+  'Schalenfrüchte',
+  'Beschädigt',
   'Backwaren',
-  'Getränke',
-  'Molkereiprodukte',
-  'Fleisch & Wurst',
-  'Tiefkühl',
-  'Süßwaren',
-  'Haushalt',
-  'Aktionsware',
+  'Alkohol',
+  'Mobilfunk',
   'Sonstiges',
 ];
+
+const obsoleteCategory = 'Veraltet';
+
+String normalizeProductCategory(String category) =>
+    category == 'Nüsse' ? 'Schalenfrüchte' : category;
 
 const userAgent =
     'RewePLUAssistent/1.0 (eu.dacjan.rewe_plu_assistent; dacjan@mailbox.org)';

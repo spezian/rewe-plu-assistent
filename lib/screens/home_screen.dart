@@ -394,7 +394,7 @@ class _ProductListPageState extends State<ProductListPage>
     super.build(context);
     final controller = AppScope.of(context);
     final products = controller.products.where((product) {
-      if (_category == 'Veraltet') return product.isObsolete;
+      if (_category == obsoleteCategory) return product.isObsolete;
       if (product.isObsolete) return false;
       return _category == null || product.category == _category;
     }).toList();
@@ -437,16 +437,17 @@ class _ProductListPageState extends State<ProductListPage>
                       return Icon(
                         Icons.history,
                         size: 18,
-                        color: _category == 'Veraltet'
+                        color: _category == obsoleteCategory
                             ? Colors.white
                             : Colors.black,
                       );
                     },
                   ),
-                  label: const Text('Veraltet'),
-                  selected: _category == 'Veraltet',
+                  label: const Text(obsoleteCategory),
+                  selected: _category == obsoleteCategory,
                   showCheckmark: false,
-                  onSelected: (_) => setState(() => _category = 'Veraltet'),
+                  onSelected: (_) =>
+                      setState(() => _category = obsoleteCategory),
                 ),
               ),
             ],
@@ -456,7 +457,7 @@ class _ProductListPageState extends State<ProductListPage>
           child: products.isEmpty
               ? _EmptyProducts(
                   hasAnyProducts: controller.products.isNotEmpty,
-                  showingObsolete: _category == 'Veraltet',
+                  showingObsolete: _category == obsoleteCategory,
                 )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),

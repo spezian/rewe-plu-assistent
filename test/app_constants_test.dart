@@ -4,6 +4,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rewe_plu_assistent/core/app_constants.dart';
 
 void main() {
+  test('führt ausschließlich die vorgesehenen Kategorien', () {
+    expect(
+      <String>[...productCategories, obsoleteCategory],
+      const [
+        'Obst',
+        'Gemüse',
+        'Pilze',
+        'Schalenfrüchte',
+        'Beschädigt',
+        'Backwaren',
+        'Alkohol',
+        'Mobilfunk',
+        'Sonstiges',
+        'Veraltet',
+      ],
+    );
+  });
+
+  test('benennt die bisherige Nuss-Kategorie um', () {
+    expect(normalizeProductCategory('Nüsse'), 'Schalenfrüchte');
+    expect(normalizeProductCategory('Obst'), 'Obst');
+  });
+
   test('erkennt neue Supabase Secret Keys', () {
     expect(isSecretSupabaseKey('sb_secret_example'), isTrue);
     expect(isSecretSupabaseKey('sb_publishable_example'), isFalse);

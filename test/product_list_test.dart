@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rewe_plu_assistent/app_controller.dart';
 import 'package:rewe_plu_assistent/app_scope.dart';
+import 'package:rewe_plu_assistent/core/app_constants.dart';
 import 'package:rewe_plu_assistent/data/product_repository.dart';
 import 'package:rewe_plu_assistent/models/product.dart';
 import 'package:rewe_plu_assistent/screens/home_screen.dart';
@@ -74,9 +75,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text('Normaler Apfel')).dy),
     );
 
-    await tester.drag(find.byType(ListView).first, const Offset(-2000, 0));
-    await tester.pump();
-    await tester.tap(find.text('Veraltet'));
+    await tester.dragUntilVisible(
+      find.text(obsoleteCategory),
+      find.byType(ListView).first,
+      const Offset(-300, 0),
+    );
+    await tester.tap(find.text(obsoleteCategory));
     await tester.pump();
 
     expect(find.text('Aktion der Woche'), findsNothing);
