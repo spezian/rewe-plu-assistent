@@ -85,18 +85,17 @@ ProductSearchResult searchProducts(List<Product> products, String rawQuery) {
   scoredProducts.sort((a, b) {
     final scoreOrder = b.$2.compareTo(a.$2);
     if (scoreOrder != 0) return scoreOrder;
-    if (a.$1.isPinned != b.$1.isPinned) return a.$1.isPinned ? -1 : 1;
-    return a.$1.name.compareTo(b.$1.name);
+    return compareProductNamesAlphabetically(a.$1, b.$1);
   });
   scoredObsoleteProducts.sort((a, b) {
     final scoreOrder = b.$2.compareTo(a.$2);
     if (scoreOrder != 0) return scoreOrder;
-    return a.$1.name.compareTo(b.$1.name);
+    return compareProductNamesAlphabetically(a.$1, b.$1);
   });
   retired.sort((a, b) {
     final scoreOrder = b.score.compareTo(a.score);
     if (scoreOrder != 0) return scoreOrder;
-    return a.product.name.compareTo(b.product.name);
+    return compareProductNamesAlphabetically(a.product, b.product);
   });
 
   return ProductSearchResult(

@@ -273,7 +273,13 @@ class ProductDetailScreen extends StatelessWidget {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        controller.canEdit
+                        product.codes.isEmpty
+                            ? controller.canEdit
+                                  ? 'Dieses Produkt hat keinen Code. Über '
+                                        '„Bearbeiten“ kann ein neuer Code '
+                                        'hinzugefügt werden.'
+                                  : 'Dieses Produkt hat keinen Code.'
+                            : controller.canEdit
                             ? 'Dieses Produkt ist vollständig veraltet. Unten '
                                   'kann ein Code reaktiviert werden.'
                             : 'Dieses Produkt ist vollständig veraltet.',

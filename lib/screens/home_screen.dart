@@ -5,6 +5,7 @@ import '../app_controller.dart';
 import '../app_scope.dart';
 import '../core/app_constants.dart';
 import '../models/product.dart';
+import '../utils/product_sort.dart';
 import '../widgets/product_card.dart';
 import 'barcode_screen.dart';
 import 'market_access_screen.dart';
@@ -397,7 +398,7 @@ class _ProductListPageState extends State<ProductListPage>
       if (_category == obsoleteCategory) return product.isObsolete;
       if (product.isObsolete) return false;
       return _category == null || product.category == _category;
-    }).toList();
+    }).toList()..sort(compareProductsForOverview);
     final promotionProducts = products
         .where((product) => product.isPromotion && !product.isObsolete)
         .toList(growable: false);
