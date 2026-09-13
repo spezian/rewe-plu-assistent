@@ -374,9 +374,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         maxWidth: 1400,
       );
       if (picked == null || !mounted) return;
-      final storedPath = await AppScope.of(context).importPickedImage(picked);
+      final storedImage = await AppScope.of(context).importPickedImage(picked);
       if (!mounted) return;
-      _addImage(storedPath);
+      _addImage(storedImage);
     } catch (error) {
       if (mounted) _showError('Bild konnte nicht übernommen werden: $error');
     }
@@ -392,10 +392,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
     if (suggestion == null || !mounted) return;
     try {
-      final storedPath = await AppScope.of(context)
+      final storedImage = await AppScope.of(context)
           .importImageFromUrl(suggestion.imageUrl);
       if (!mounted) return;
-      _addImage(storedPath, suggestion: suggestion);
+      _addImage(storedImage, suggestion: suggestion);
     } catch (error) {
       if (mounted) {
         _showError('Ausgewähltes Bild konnte nicht geladen werden: $error');
@@ -491,14 +491,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _addImage(String localPath, {RemoteImageSuggestion? suggestion}) {
+  void _addImage(
+    ImportedProductImage storedImage, {
+    RemoteImageSuggestion? suggestion,
+  }) {
     if (!mounted) return;
     setState(() {
       _images.add(
         ProductImageData(
           id: _uuid.v4(),
           productId: _productId,
-          localPath: localPath,
+          localPath: storedImage.originalReference,
+          localThumbnailPath: storedImage.thumbnailReference,
           sourcePageUrl: suggestion?.sourcePageUrl,
           attribution: suggestion?.attribution,
           license: suggestion?.license,
@@ -849,12 +853,34 @@ class _ImagesEditor extends StatelessWidget {
   }
 
   Widget _imageWidget(BuildContext context, ProductImageData image) {
-    final localProvider = _imageStorage.providerFor(image.localPath);
+    final localProvider =
+        _imageStorage.providerFor(image.localThumbnailPath) ??
+        _imageStorage.providerFor(image.localPath);
     if (localProvider != null) {
       return Image(image: localProvider, fit: BoxFit.cover);
     }
-    if (image.remoteUrl != null && image.remoteUrl!.isNotEmpty) {
-      return Image.network(image.remoteUrl!, fit: BoxFit.cover);
+    final remoteUrl = image.remoteThumbnailUrl?.isNotEmpty == true
+        ? image.remoteThumbnailUrl!
+        : image.remoteUrl;
+    if (remoteUrl != null && remoteUrl.isNotEmpty) {
+      return Image.network(
+        remoteUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) {
+          final originalUrl = image.remoteUrl;
+          if (originalUrl != null &&
+              originalUrl.isNotEmpty &&
+              originalUrl != remoteUrl) {
+            return Image.network(
+              originalUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) =>
+                  const Icon(Icons.broken_image_outlined),
+            );
+          }
+          return const Icon(Icons.broken_image_outlined);
+        },
+      );
     }
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,

@@ -9,27 +9,27 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/app_constants.dart';
+import 'image_optimizer.dart';
+import 'imported_product_image.dart';
 
 class LocalImageStorage {
   const LocalImageStorage();
 
   static const _uuid = Uuid();
 
-  Future<String> importPickedImage(XFile pickedFile) async {
-    final extension = path.extension(pickedFile.path).isEmpty
-        ? '.jpg'
-        : path.extension(pickedFile.path).toLowerCase();
-    final destination = await _newImagePath(extension);
-    await File(pickedFile.path).copy(destination);
-    return destination;
+  Future<ImportedProductImage> importPickedImage(XFile pickedFile) async {
+    return _storeOptimized(await pickedFile.readAsBytes());
   }
 
-  Future<String> importImageFromUrl(String rawUrl) async {
+  Future<ImportedProductImage> importImageFromUrl(String rawUrl) async {
     final response = await _downloadImage(rawUrl);
-    final extension = _extensionForMimeType(response.headers['content-type']);
-    final destination = await _newImagePath(extension);
-    await File(destination).writeAsBytes(response.bodyBytes, flush: true);
-    return destination;
+    return _storeOptimized(response.bodyBytes);
+  }
+
+  Future<ImportedProductImage?> optimizeExistingImage(String reference) async {
+    final file = File(reference);
+    if (!await file.exists()) return null;
+    return _storeOptimized(await file.readAsBytes());
   }
 
   ImageProvider<Object>? providerFor(String? reference) {
@@ -47,9 +47,29 @@ class LocalImageStorage {
     return extension.isEmpty ? '.jpg' : extension;
   }
 
-  Future<String> _newImagePath(String extension) async {
+  Future<ImportedProductImage> _storeOptimized(Uint8List sourceBytes) async {
+    final optimized = await optimizeProductImage(sourceBytes);
+    final originalPath = await _newImagePath('.jpg');
+    final thumbnailPath = await _newImagePath(
+      '.jpg',
+      directoryName: 'product_image_thumbnails',
+    );
+    await Future.wait([
+      File(originalPath).writeAsBytes(optimized.original, flush: true),
+      File(thumbnailPath).writeAsBytes(optimized.thumbnail, flush: true),
+    ]);
+    return ImportedProductImage(
+      originalReference: originalPath,
+      thumbnailReference: thumbnailPath,
+    );
+  }
+
+  Future<String> _newImagePath(
+    String extension, {
+    String directoryName = 'product_images',
+  }) async {
     final documents = await getApplicationDocumentsDirectory();
-    final directory = Directory(path.join(documents.path, 'product_images'));
+    final directory = Directory(path.join(documents.path, directoryName));
     await directory.create(recursive: true);
     return path.join(directory.path, '${_uuid.v4()}$extension');
   }
@@ -85,11 +105,3 @@ Uri _validatedImageUri(String rawUrl) {
 
 String _mimeType(String? contentType) =>
     (contentType ?? '').split(';').first.toLowerCase();
-
-String _extensionForMimeType(String? contentType) =>
-    switch (_mimeType(contentType)) {
-      'image/png' => '.png',
-      'image/webp' => '.webp',
-      'image/gif' => '.gif',
-      _ => '.jpg',
-    };

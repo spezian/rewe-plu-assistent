@@ -20,10 +20,11 @@ class ProductImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localPath = product.imagePath;
-    final imageUrl = product.imageUrl;
+    final primaryImage = product.primaryImage;
     Widget child;
-    final localProvider = _imageStorage.providerFor(localPath);
+    final localProvider =
+        _imageStorage.providerFor(primaryImage?.localThumbnailPath) ??
+        _imageStorage.providerFor(primaryImage?.localPath);
     if (localProvider != null) {
       child = Image(
         image: localProvider,
@@ -32,18 +33,39 @@ class ProductImage extends StatelessWidget {
         height: imageHeight,
         errorBuilder: (_, _, _) => _fallback(context),
       );
-    } else if (imageUrl != null && imageUrl.isNotEmpty) {
-      child = Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        width: imageWidth,
-        height: imageHeight,
-        errorBuilder: (_, _, _) => _fallback(context),
-      );
     } else {
-      child = _fallback(context);
+      child = _networkImage(
+        context,
+        primaryImage?.remoteThumbnailUrl,
+        fallbackUrl: primaryImage?.remoteUrl,
+      );
     }
     return child;
+  }
+
+  Widget _networkImage(
+    BuildContext context,
+    String? imageUrl, {
+    String? fallbackUrl,
+  }) {
+    final effectiveUrl = imageUrl?.isNotEmpty == true ? imageUrl! : fallbackUrl;
+    if (effectiveUrl == null || effectiveUrl.isEmpty) {
+      return _fallback(context);
+    }
+    return Image.network(
+      effectiveUrl,
+      fit: BoxFit.cover,
+      width: imageWidth,
+      height: imageHeight,
+      errorBuilder: (_, _, _) {
+        if (fallbackUrl != null &&
+            fallbackUrl.isNotEmpty &&
+            fallbackUrl != effectiveUrl) {
+          return _networkImage(context, fallbackUrl);
+        }
+        return _fallback(context);
+      },
+    );
   }
 
   Widget _fallback(BuildContext context) {

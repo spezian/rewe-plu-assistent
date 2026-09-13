@@ -9,6 +9,8 @@ void main() {
         id: 'image-1',
         productId: 'product-1',
         localPath: '/tmp/front.jpg',
+        localThumbnailPath: '/tmp/front_thumb.jpg',
+        remoteThumbnailUrl: 'https://example.test/front_thumb.jpg',
         sortOrder: 0,
         createdAt: now,
       ),
@@ -37,7 +39,13 @@ void main() {
     expect(product.images, hasLength(2));
     expect(product.primaryImage?.id, 'image-1');
     expect(product.imagePath, '/tmp/front.jpg');
+    expect(product.thumbnailPath, '/tmp/front_thumb.jpg');
+    expect(product.thumbnailUrl, 'https://example.test/front_thumb.jpg');
     expect(product.toQueueMap()['images'], hasLength(2));
+    expect(
+      (product.images.first.toDatabaseMap())['local_thumbnail_path'],
+      '/tmp/front_thumb.jpg',
+    );
     expect(product.images.last.license, 'CC BY-SA 4.0');
     expect(
       (product.toQueueMap()['product'] as Map<String, Object?>)['aliases'],

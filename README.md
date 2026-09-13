@@ -17,6 +17,8 @@ mit Supabase abgeglichen.
 - klar abgetrennter Bereich für veraltete Codes und vollständig veraltete Produkte
 - mehrere Codes je Produkt; auch alle Codes dürfen gleichzeitig veraltet sein
 - mehrere Produktfotos mit Vollbild- und Zoomansicht
+- komprimierte Produktfotos und separat gespeicherte Miniaturbilder für kurze
+  Ladezeiten
 - Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
   Unsplash
 - Barcode-Erfassung per Kamera
@@ -51,8 +53,8 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
    es keine Benutzerkonten.
 3. Im SQL Editor [supabase/schema.sql](supabase/schema.sql) ausführen.
    Bei einem bereits eingerichteten Projekt das aktualisierte Skript erneut
-   ausführen; es ergänzt die Marktzuteilung und ersetzt die alten
-   Benutzerkonto-Policies idempotent.
+   ausführen; es ergänzt unter anderem die Thumbnail-URLs und ersetzt die
+   alten Benutzerkonto-Policies idempotent.
 4. Den ersten Markt ausschließlich im SQL Editor anlegen. Bei der Migration aus
    der bisherigen Einzelmarkt-Version ordnet `true` alle noch nicht zugeordneten
    Cloud-Produkte diesem Markt zu:
@@ -80,6 +82,14 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
    einen `sb_secret_...`- oder `service_role`-Key in die App einbauen. Falls ein
    Secret-Key bereits für einen Web-Build verwendet wurde, diesen in Supabase
    widerrufen/rotieren.
+
+### Einmalige Bildmigration
+
+Nach dem Einspielen des aktualisierten `schema.sql` den Markt einmal mit
+Bearbeitungszugriff öffnen und synchronisieren. Bilder ohne gespeicherte
+Thumbnail-URL werden dabei heruntergeladen, optimiert und zusammen mit ihrem
+Thumbnail erneut hochgeladen. Bereits migrierte Bilder werden übersprungen;
+ein abgebrochener Lauf wird beim nächsten Sync fortgesetzt.
 
 ## Run/Build
 

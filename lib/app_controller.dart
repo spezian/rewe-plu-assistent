@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'data/product_repository.dart';
+import 'data/imported_product_image.dart';
 import 'models/market_session.dart';
 import 'models/product.dart';
 import 'utils/product_sort.dart';
@@ -96,10 +97,10 @@ class AppController extends ChangeNotifier {
     await saveProduct(product.copyWith(codes: codes, updatedAt: now));
   }
 
-  Future<String> importPickedImage(XFile image) =>
+  Future<ImportedProductImage> importPickedImage(XFile image) =>
       repository.importPickedImage(image);
 
-  Future<String> importImageFromUrl(String url) =>
+  Future<ImportedProductImage> importImageFromUrl(String url) =>
       repository.importImageFromUrl(url);
 
   Future<void> enterMarket({required String marketNumber, String? pin}) async {
