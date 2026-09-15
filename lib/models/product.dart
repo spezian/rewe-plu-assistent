@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../core/app_constants.dart';
 
-enum ProductCodeType { plu, price, barcode, cashierTile }
+enum ProductCodeType { plu, price, barcode, cashierTile, info }
 
 extension ProductCodeTypeX on ProductCodeType {
   String get databaseValue => name;
@@ -14,6 +14,7 @@ extension ProductCodeTypeX on ProductCodeType {
     ProductCodeType.price => 'Preis',
     ProductCodeType.barcode => 'Barcode',
     ProductCodeType.cashierTile => 'Kassenkachel',
+    ProductCodeType.info => 'Info',
   };
 
   String get inputHint => switch (this) {
@@ -21,6 +22,7 @@ extension ProductCodeTypeX on ProductCodeType {
     ProductCodeType.price => 'z. B. 1,49',
     ProductCodeType.barcode => 'Nummer scannen oder eingeben',
     ProductCodeType.cashierTile => 'z. B. Kachel 6 oder Drachenfrucht',
+    ProductCodeType.info => 'z. B. Nur stückweise verkaufen',
   };
 
   bool get canShowBarcode =>

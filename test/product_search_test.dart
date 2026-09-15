@@ -117,4 +117,14 @@ void main() {
       tileProduct,
     ]);
   });
+
+  test('findet angepinnte Produkte über ihre Kennzeichnung', () {
+    final pinned = product.copyWith(isPinned: true);
+
+    expect(searchProducts([pinned], 'angepinnt').currentProducts, [pinned]);
+  });
+
+  test('liest Info als eigenen Datenbanktyp', () {
+    expect(ProductCodeTypeX.fromDatabase('info'), ProductCodeType.info);
+  });
 }

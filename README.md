@@ -7,8 +7,10 @@ mit Supabase abgeglichen.
 
 ## Funktionen
 
-- kompakte Produktliste mit direkt sichtbarem aktuellem PLU, Preis, Barcode
-  oder einer Bedienerkachel samt Kategoriepfad (z. B. `Obst > Exoten`)
+- kompakte Produktliste mit direkt sichtbarem aktuellem PLU, Preis, Barcode,
+  freiem Infotext oder einer Bedienerkachel samt Kategoriepfad
+  (z. B. `Obst > Exoten`)
+- eigene Bereiche für Aktionen der Woche und angepinnte Produkte
 - auffällige, kombinierbare Kennzeichnungen für Bio- und Aktionsprodukte
 - Barcode-Vollansicht für Barcode oder PLU mit maximaler App-Helligkeit auf
   unterstützten Geräten

@@ -61,7 +61,9 @@ create table if not exists public.product_codes (
   id uuid primary key,
   product_id uuid not null references public.products(id) on delete cascade,
   owner_id uuid,
-  type text not null check (type in ('plu', 'price', 'barcode', 'cashierTile')),
+  type text not null check (
+    type in ('plu', 'price', 'barcode', 'cashierTile', 'info')
+  ),
   value text not null,
   is_active boolean not null default false,
   note text not null default '',
@@ -76,7 +78,7 @@ alter table public.product_codes
   drop constraint if exists product_codes_type_check;
 alter table public.product_codes
   add constraint product_codes_type_check
-  check (type in ('plu', 'price', 'barcode', 'cashierTile'));
+  check (type in ('plu', 'price', 'barcode', 'cashierTile', 'info'));
 alter table public.product_codes
   drop constraint if exists product_codes_owner_id_fkey;
 alter table public.product_codes
