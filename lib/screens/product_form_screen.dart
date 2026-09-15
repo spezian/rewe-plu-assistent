@@ -35,6 +35,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late String _category;
   bool _isOrganic = false;
   bool _isPromotion = false;
+  bool _isPinned = false;
   bool _saving = false;
 
   @override
@@ -53,6 +54,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         : 'Sonstiges';
     _isOrganic = product?.isOrganic ?? false;
     _isPromotion = product?.isPromotion ?? false;
+    _isPinned = product?.isPinned ?? false;
     _images.addAll(product?.images ?? const []);
     if (product == null) {
       _codes.add(_CodeDraft.newCode(isActive: true));
@@ -108,6 +110,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Bitte einen eindeutigen Produktnamen eingeben.'
                   : null,
+            ),
+            const SizedBox(height: 14),
+            SwitchListTile.adaptive(
+              key: const ValueKey('product-pinned-switch'),
+              value: _isPinned,
+              onChanged: (selected) => setState(() => _isPinned = selected),
+              secondary: const Icon(Icons.push_pin_outlined),
+              title: const Text('Produkt anpinnen'),
+              subtitle: const Text(
+                'Erscheint im Bereich „Angepinnte Produkte“.',
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              ),
             ),
             const SizedBox(height: 14),
             TextFormField(
@@ -203,7 +221,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Codes und Preise',
+                    'Codes, Preise und Infos',
                     style: Theme.of(context).textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.w800),
                   ),
@@ -255,7 +273,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             OutlinedButton.icon(
               onPressed: _addCode,
               icon: const Icon(Icons.add),
-              label: const Text('Neuen Code oder Preis hinzufügen'),
+              label: const Text('Neuen Eintrag hinzufügen'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
               ),
@@ -467,7 +485,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       description: _descriptionController.text.trim(),
       aliases: aliases,
       images: images,
-      isPinned: oldProduct?.isPinned ?? false,
+      isPinned: _isPinned,
       isOrganic: _isOrganic,
       isPromotion: _isPromotion,
       createdAt: oldProduct?.createdAt ?? now,
@@ -556,11 +574,13 @@ class _CodeDraft {
 
   String get normalizedValue {
     final raw = valueController.text.trim();
-    if (type != ProductCodeType.price && type != ProductCodeType.cashierTile) {
-      return raw.replaceAll(' ', '');
+    if (type == ProductCodeType.cashierTile || type == ProductCodeType.info) {
+      return raw;
     }
-    final price = double.tryParse(raw.replaceAll(',', '.'));
-    return price == null ? raw.replaceAll(',', '.') : price.toStringAsFixed(2);
+    if (type != ProductCodeType.price) return raw.replaceAll(' ', '');
+    final normalizedPrice = raw.replaceAll(',', '.');
+    final price = double.tryParse(normalizedPrice);
+    return price == null ? normalizedPrice : price.toStringAsFixed(2);
   }
 
   String get displayCategoryValue => type == ProductCodeType.cashierTile
@@ -661,6 +681,7 @@ class _CodeEditorCard extends StatelessWidget {
                   decimal: true,
                 ),
                 ProductCodeType.cashierTile => TextInputType.text,
+                ProductCodeType.info => TextInputType.text,
                 _ => TextInputType.number,
               },
               inputFormatters: switch (draft.type) {
@@ -668,6 +689,7 @@ class _CodeEditorCard extends StatelessWidget {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
                 ],
                 ProductCodeType.cashierTile => null,
+                ProductCodeType.info => null,
                 _ => [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z-]')),
                 ],
@@ -685,6 +707,9 @@ class _CodeEditorCard extends StatelessWidget {
                       )
                     : null,
               ),
+              textCapitalization: draft.type == ProductCodeType.info
+                  ? TextCapitalization.sentences
+                  : TextCapitalization.none,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Bitte einen Wert eingeben.';

@@ -14,6 +14,7 @@ void main() {
     required String id,
     required String name,
     bool isPromotion = false,
+    bool isPinned = false,
     bool isActive = true,
   }) {
     return Product(
@@ -21,6 +22,7 @@ void main() {
       name: name,
       category: 'Obst',
       isPromotion: isPromotion,
+      isPinned: isPinned,
       createdAt: now,
       updatedAt: now,
       codes: [
@@ -85,6 +87,50 @@ void main() {
 
     expect(find.text('Aktion der Woche'), findsNothing);
     expect(find.text('Veraltete Birne'), findsOneWidget);
+  });
+
+  testWidgets('ordnet angepinnte Produkte unter Aktionen ein', (tester) async {
+    tester.view.physicalSize = const Size(900, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final promotion = product(
+      id: 'promotion',
+      name: 'Aktionsbanane',
+      isPromotion: true,
+      isPinned: true,
+    );
+    final pinned = product(
+      id: 'pinned',
+      name: 'Angepinnter Apfel',
+      isPinned: true,
+    );
+    final regular = product(id: 'regular', name: 'Normale Birne');
+    final controller = _ProductListController([regular, pinned, promotion]);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AppScope(
+          controller: controller,
+          child: const Scaffold(body: ProductListPage()),
+        ),
+      ),
+    );
+
+    expect(find.text('Aktion der Woche'), findsOneWidget);
+    expect(find.text('Angepinnte Produkte'), findsOneWidget);
+    expect(find.text('Weitere Produkte'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Aktionsbanane')).dy,
+      lessThan(tester.getTopLeft(find.text('Angepinnter Apfel')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('Angepinnter Apfel')).dy,
+      lessThan(tester.getTopLeft(find.text('Normale Birne')).dy),
+    );
+    expect(find.text('Aktionsbanane'), findsOneWidget);
   });
 }
 

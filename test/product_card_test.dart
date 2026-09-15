@@ -115,6 +115,45 @@ void main() {
     expect(barcodeOpened, isFalse);
   });
 
+  testWidgets('zeigt einen Infotext ohne vorangestelltes Info-Label', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 9, 15);
+    final product = Product(
+      id: 'info-product',
+      name: 'Lose Ware',
+      category: 'Sonstiges',
+      createdAt: now,
+      updatedAt: now,
+      codes: [
+        ProductCode(
+          id: 'info-1',
+          productId: 'info-product',
+          type: ProductCodeType.info,
+          value: 'Nur stückweise verkaufen',
+          isActive: true,
+          createdAt: now,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProductCard(
+            product: product,
+            onOpenDetails: () {},
+            onOpenImages: () {},
+            onShowCode: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Nur stückweise verkaufen'), findsOneWidget);
+    expect(find.text('Info: Nur stückweise verkaufen'), findsNothing);
+  });
+
   testWidgets('deaktiviert die Wischänderung im Lesemodus', (tester) async {
     final now = DateTime(2026, 8, 31);
     final product = Product(

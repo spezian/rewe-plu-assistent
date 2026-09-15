@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rewe_plu_assistent/core/app_constants.dart';
 
+import '../app_controller.dart';
 import '../app_scope.dart';
 import '../models/product.dart';
 import '../utils/product_search.dart';
@@ -53,6 +54,15 @@ class _SearchScreenState extends State<SearchScreen>
     super.build(context);
     final controller = AppScope.of(context);
     final result = searchProducts(controller.products, _query);
+    final promotionProducts = result.currentProducts
+        .where((product) => product.isPromotion)
+        .toList(growable: false);
+    final pinnedProducts = result.currentProducts
+        .where((product) => product.isPinned && !product.isPromotion)
+        .toList(growable: false);
+    final regularProducts = result.currentProducts
+        .where((product) => !product.isPromotion && !product.isPinned)
+        .toList(growable: false);
     return Column(
       children: [
         Padding(
@@ -66,7 +76,7 @@ class _SearchScreenState extends State<SearchScreen>
             enableSuggestions: false,
             onChanged: (value) => setState(() => _query = value),
             decoration: InputDecoration(
-              hintText: 'Produkt, PLU oder Barcode',
+              hintText: 'Produkt, PLU, Barcode oder Info',
               hintStyle: Theme.of(context).textTheme.bodyLarge!
                   .copyWith(color: Colors.grey[600]),
               border: OutlineInputBorder(
@@ -115,23 +125,43 @@ class _SearchScreenState extends State<SearchScreen>
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
                   children: [
                     if (result.currentProducts.isNotEmpty) ...[
-                      _SectionHeader(
-                        title: _query.isEmpty
-                            ? 'Alle aktuellen Codes'
-                            : 'Aktuell',
-                        count: result.currentProducts.length,
-                      ),
-                      for (final product in result.currentProducts) ...[
-                        ProductCard(
-                          product: product,
-                          onTogglePinned: controller.canEdit
-                              ? () => controller.togglePinned(product)
-                              : null,
-                          onOpenDetails: () => _openDetails(context, product),
-                          onOpenImages: () => _openImages(context, product),
-                          onShowCode: () => _showActiveCode(context, product),
+                      if (promotionProducts.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: 'Aktion der Woche',
+                          count: promotionProducts.length,
+                          promotion: true,
                         ),
-                        const SizedBox(height: 8),
+                        for (final product in promotionProducts) ...[
+                          _currentProductCard(context, controller, product),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
+                      if (pinnedProducts.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: 'Angepinnte Produkte',
+                          count: pinnedProducts.length,
+                          pinned: true,
+                        ),
+                        for (final product in pinnedProducts) ...[
+                          _currentProductCard(context, controller, product),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
+                      if (regularProducts.isNotEmpty) ...[
+                        _SectionHeader(
+                          title:
+                              promotionProducts.isNotEmpty ||
+                                  pinnedProducts.isNotEmpty
+                              ? 'Weitere Produkte'
+                              : _query.isEmpty
+                              ? 'Alle aktuellen Codes'
+                              : 'Aktuell',
+                          count: regularProducts.length,
+                        ),
+                        for (final product in regularProducts) ...[
+                          _currentProductCard(context, controller, product),
+                          const SizedBox(height: 8),
+                        ],
                       ],
                     ],
                     if (result.obsoleteProducts.isNotEmpty) ...[
@@ -207,6 +237,22 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _currentProductCard(
+    BuildContext context,
+    AppController controller,
+    Product product,
+  ) {
+    return ProductCard(
+      product: product,
+      onTogglePinned: controller.canEdit
+          ? () => controller.togglePinned(product)
+          : null,
+      onOpenDetails: () => _openDetails(context, product),
+      onOpenImages: () => _openImages(context, product),
+      onShowCode: () => _showActiveCode(context, product),
     );
   }
 
@@ -399,14 +445,23 @@ class _SectionHeader extends StatelessWidget {
     required this.title,
     required this.count,
     this.warning = false,
+    this.promotion = false,
+    this.pinned = false,
   });
 
   final String title;
   final int count;
   final bool warning;
+  final bool promotion;
+  final bool pinned;
 
   @override
   Widget build(BuildContext context) {
+    final color = warning || promotion
+        ? reweDarkRed
+        : pinned
+        ? reweDarkTeal
+        : Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 5, 4, 8),
       child: Row(
@@ -414,15 +469,21 @@ class _SectionHeader extends StatelessWidget {
           if (warning) ...[
             Icon(Icons.history, size: 20, color: reweDarkRed),
             const SizedBox(width: 7),
+          ] else if (promotion) ...[
+            Icon(Icons.local_offer_outlined, size: 20, color: color),
+            const SizedBox(width: 7),
+          ] else if (pinned) ...[
+            Icon(Icons.push_pin_outlined, size: 20, color: color),
+            const SizedBox(width: 7),
           ],
           Expanded(
             child: Text(
               title,
               style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
+                  ?.copyWith(color: color, fontWeight: FontWeight.w800),
             ),
           ),
-          Text('$count'),
+          Text('$count', style: TextStyle(color: color)),
         ],
       ),
     );

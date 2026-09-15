@@ -402,8 +402,17 @@ class _ProductListPageState extends State<ProductListPage>
     final promotionProducts = products
         .where((product) => product.isPromotion && !product.isObsolete)
         .toList(growable: false);
+    final pinnedProducts = products
+        .where(
+          (product) =>
+              product.isPinned && !product.isPromotion && !product.isObsolete,
+        )
+        .toList(growable: false);
     final regularProducts = products
-        .where((product) => !product.isPromotion || product.isObsolete)
+        .where(
+          (product) =>
+              product.isObsolete || (!product.isPromotion && !product.isPinned),
+        )
         .toList(growable: false);
     return Column(
       children: [
@@ -474,8 +483,20 @@ class _ProductListPageState extends State<ProductListPage>
                         const SizedBox(height: 8),
                       ],
                     ],
+                    if (pinnedProducts.isNotEmpty) ...[
+                      _ProductListSectionHeader(
+                        title: 'Angepinnte Produkte',
+                        count: pinnedProducts.length,
+                        pinned: true,
+                      ),
+                      for (final product in pinnedProducts) ...[
+                        _productCard(context, controller, product),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
                     if (regularProducts.isNotEmpty) ...[
-                      if (promotionProducts.isNotEmpty)
+                      if (promotionProducts.isNotEmpty ||
+                          pinnedProducts.isNotEmpty)
                         _ProductListSectionHeader(
                           title: 'Weitere Produkte',
                           count: regularProducts.length,
@@ -531,16 +552,20 @@ class _ProductListSectionHeader extends StatelessWidget {
     required this.title,
     required this.count,
     this.promotion = false,
+    this.pinned = false,
   });
 
   final String title;
   final int count;
   final bool promotion;
+  final bool pinned;
 
   @override
   Widget build(BuildContext context) {
     final color = promotion
         ? reweDarkRed
+        : pinned
+        ? reweDarkTeal
         : Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 5, 4, 8),
@@ -548,6 +573,9 @@ class _ProductListSectionHeader extends StatelessWidget {
         children: [
           if (promotion) ...[
             Icon(Icons.local_offer_outlined, size: 20, color: color),
+            const SizedBox(width: 7),
+          ] else if (pinned) ...[
+            Icon(Icons.push_pin_outlined, size: 20, color: color),
             const SizedBox(width: 7),
           ],
           Expanded(

@@ -270,7 +270,7 @@ class _CodeButton extends StatelessWidget {
                     children: [
                       if (code.type == ProductCodeType.cashierTile) ...[
                         Text(
-                          'Kachel: ${code.displayValue}',
+                          'Bedienerkachel: ${code.displayValue}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
@@ -280,6 +280,14 @@ class _CodeButton extends StatelessWidget {
                                   FontFeature.tabularFigures(),
                                 ],
                               ),
+                        ),
+                      ] else if (code.type == ProductCodeType.info) ...[
+                        Text(
+                          code.displayValue,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ] else if (code.type == ProductCodeType.barcode) ...[
                         Text(

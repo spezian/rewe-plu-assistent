@@ -49,4 +49,67 @@ void main() {
     );
     expect(find.text('4011'), findsNothing);
   });
+
+  testWidgets('zeigt und ändert den Pin-Status in der Produktbearbeitung', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final now = DateTime(2026, 9, 15);
+    final product = Product(
+      id: 'product-pin',
+      name: 'Apfel',
+      category: 'Obst',
+      createdAt: now,
+      updatedAt: now,
+      codes: [
+        ProductCode(
+          id: 'code-pin',
+          productId: 'product-pin',
+          type: ProductCodeType.plu,
+          value: '4011',
+          isActive: true,
+          createdAt: now,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductFormScreen(product: product)),
+    );
+
+    final tile = find.byKey(const ValueKey('product-pinned-switch'));
+    expect(tile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+
+    await tester.tap(tile);
+    await tester.pump();
+
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+  });
+
+  testWidgets('bietet Info als Texteingabe ohne Kassen-Kategorie an', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const MaterialApp(home: ProductFormScreen()));
+
+    final typeDropdown = find.byType(DropdownButtonFormField<ProductCodeType>);
+    await tester.ensureVisible(typeDropdown);
+    await tester.tap(typeDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Info').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Info *'), findsOneWidget);
+    expect(find.text('z. B. Nur stückweise verkaufen'), findsOneWidget);
+    expect(find.text('Kategorie im Bedienerdisplay *'), findsNothing);
+  });
 }

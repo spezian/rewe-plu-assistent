@@ -52,6 +52,7 @@ ProductSearchResult searchProducts(List<Product> products, String rawQuery) {
       ...product.aliases,
       if (product.isOrganic) 'bio biologisch oeko',
       if (product.isPromotion) 'aktion angebot reduziert rabatt',
+      if (product.isPinned) 'angepinnt pin favoriten',
       if (active != null) active.value,
       ?active?.displayCategory,
       if (active == null) ...product.codes.map((code) => code.value),
