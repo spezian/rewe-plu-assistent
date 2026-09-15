@@ -695,9 +695,7 @@ class _CodeEditorCard extends StatelessWidget {
                 ],
               },
               decoration: InputDecoration(
-                labelText: draft.type == ProductCodeType.cashierTile
-                    ? 'Kachel im Bedienerdisplay *'
-                    : '${draft.type.label} *',
+                labelText: '${draft.type.label} *',
                 hintText: draft.type.inputHint,
                 suffixIcon: draft.type == ProductCodeType.barcode
                     ? IconButton(

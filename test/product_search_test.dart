@@ -90,7 +90,7 @@ void main() {
     expect(searchProducts([marked], 'aktion').currentProducts, [marked]);
   });
 
-  test('findet eine Bedienerkachel über Kachel und Display-Kategorie', () {
+  test('findet eine Kassenkachel über Kachel und Display-Kategorie', () {
     final tileProduct = Product(
       id: 'product-3',
       name: 'Pitahaya',

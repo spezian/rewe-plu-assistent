@@ -17,6 +17,9 @@ extension ProductCodeTypeX on ProductCodeType {
     ProductCodeType.info => 'Info',
   };
 
+  String get productListLabel =>
+      this == ProductCodeType.cashierTile ? 'Kachel' : label;
+
   String get inputHint => switch (this) {
     ProductCodeType.plu => 'z. B. 4011',
     ProductCodeType.price => 'z. B. 1,49',
