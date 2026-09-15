@@ -15,6 +15,11 @@ class SyncReport {
   bool get succeeded => error == null;
 }
 
+typedef SyncProgressCallback = void Function(
+  int loadedProducts,
+  int totalProducts,
+);
+
 class SyncService {
   SyncService(this._database, this._client);
 
@@ -121,7 +126,7 @@ class SyncService {
     }
   }
 
-  Future<SyncReport> synchronize() async {
+  Future<SyncReport> synchronize({SyncProgressCallback? onProgress}) async {
     if (_client == null) {
       return SyncReport(pendingCount: await _database.pendingCount());
     }
@@ -135,7 +140,7 @@ class SyncService {
         throw const AuthException('Bitte zuerst einen Markt öffnen.');
       }
       if (canEdit) await _pushPendingChanges();
-      await _pullRemoteChanges();
+      await _pullRemoteChanges(onProgress: onProgress);
       return SyncReport(pendingCount: await _database.pendingCount());
     } catch (error) {
       return SyncReport(
@@ -292,9 +297,20 @@ class SyncService {
     }
   }
 
-  Future<void> _pullRemoteChanges() async {
+  Future<void> _pullRemoteChanges({SyncProgressCallback? onProgress}) async {
     final client = _client!;
     final rawProducts = await client.from('products').select();
+    final totalProducts = rawProducts
+        .where((product) => product['deleted_at'] == null)
+        .length;
+    var loadedProducts = 0;
+    onProgress?.call(loadedProducts, totalProducts);
+
+    void reportProductLoaded() {
+      loadedProducts += 1;
+      onProgress?.call(loadedProducts, totalProducts);
+    }
+
     final rawCodes = await client.from('product_codes').select();
     final rawImages = await client.from('product_images').select();
     final codeMapsByProduct = <String, List<Map<String, dynamic>>>{};
@@ -313,7 +329,10 @@ class SyncService {
     for (final rawProduct in rawProducts) {
       final productMap = Map<String, dynamic>.from(rawProduct);
       final productId = productMap['id'] as String;
-      if (await _database.hasPendingChange(productId)) continue;
+      if (await _database.hasPendingChange(productId)) {
+        if (productMap['deleted_at'] == null) reportProductLoaded();
+        continue;
+      }
       if (productMap['deleted_at'] != null) {
         await _database.deleteProduct(productId, enqueue: false);
         continue;
@@ -357,6 +376,7 @@ class SyncService {
         );
       }
       await _cacheRemoteThumbnails(images);
+      reportProductLoaded();
     }
   }
 

@@ -32,6 +32,12 @@ class AppController extends ChangeNotifier {
   List<Product> get products => _products;
 
   bool isLoading = true;
+  bool _isInitialMarketLoading = false;
+  bool get isInitialMarketLoading => _isInitialMarketLoading;
+  int _initialLoadedProducts = 0;
+  int get initialLoadedProducts => _initialLoadedProducts;
+  int? _initialTotalProducts;
+  int? get initialTotalProducts => _initialTotalProducts;
   AppSyncState syncState = AppSyncState.idle;
   String? syncError;
   int pendingChanges = 0;
@@ -48,6 +54,7 @@ class AppController extends ChangeNotifier {
     });
     await repository.initialize();
     await _reload();
+    _updateInitialMarketLoading();
     isLoading = false;
     syncState = !isSyncConfigured
         ? AppSyncState.localOnly
@@ -121,6 +128,7 @@ class AppController extends ChangeNotifier {
     syncState = AppSyncState.idle;
     syncError = null;
     await _reload();
+    _updateInitialMarketLoading();
     notifyListeners();
     await syncNow();
   }
@@ -137,6 +145,9 @@ class AppController extends ChangeNotifier {
     _cancelScheduledLiveSync();
     await repository.leaveMarket();
     _products = const [];
+    _isInitialMarketLoading = false;
+    _initialLoadedProducts = 0;
+    _initialTotalProducts = null;
     pendingChanges = 0;
     syncState = AppSyncState.locked;
     syncError = null;
@@ -150,14 +161,28 @@ class AppController extends ChangeNotifier {
       return;
     }
     if (syncState == AppSyncState.syncing) return;
+    final tracksInitialDownload = _isInitialMarketLoading;
+    if (tracksInitialDownload) {
+      _initialLoadedProducts = 0;
+      _initialTotalProducts = null;
+    }
     syncState = AppSyncState.syncing;
     syncError = null;
     notifyListeners();
-    final report = await repository.synchronize();
+    final report = await repository.synchronize(
+      onProgress: tracksInitialDownload
+          ? (loadedProducts, totalProducts) {
+              _initialLoadedProducts = loadedProducts;
+              _initialTotalProducts = totalProducts;
+              notifyListeners();
+            }
+          : null,
+    );
     pendingChanges = report.pendingCount;
     syncError = report.error;
     syncState = report.succeeded ? AppSyncState.idle : AppSyncState.error;
     await _reload();
+    if (report.succeeded) _isInitialMarketLoading = false;
     notifyListeners();
     if (_liveSyncRequested) _scheduleLiveSync();
   }
@@ -194,6 +219,13 @@ class AppController extends ChangeNotifier {
     _products = await repository.getProducts();
     _products = [..._products]..sort(compareProductsForOverview);
     pendingChanges = await repository.pendingCount();
+  }
+
+  void _updateInitialMarketLoading() {
+    _isInitialMarketLoading =
+        isSyncConfigured && hasMarketAccess && _products.isEmpty;
+    _initialLoadedProducts = 0;
+    _initialTotalProducts = null;
   }
 
   @override

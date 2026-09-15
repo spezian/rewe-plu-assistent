@@ -38,7 +38,8 @@ class ProductRepository {
     return _database.deleteProduct(productId);
   }
 
-  Future<SyncReport> synchronize() => _sync.synchronize();
+  Future<SyncReport> synchronize({SyncProgressCallback? onProgress}) =>
+      _sync.synchronize(onProgress: onProgress);
 
   Future<void> enterMarket({required String marketNumber, String? pin}) =>
       _sync.enterMarket(marketNumber: marketNumber, pin: pin);
