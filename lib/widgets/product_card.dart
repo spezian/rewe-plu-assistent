@@ -26,26 +26,26 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final code = product.activeCode;
-    return SizedBox(
-      height: 120.0,
-      child: Dismissible(
-        key: ValueKey('product-${product.id}'),
-        direction: onTogglePinned == null
-            ? DismissDirection.none
-            : DismissDirection.horizontal,
-        confirmDismiss: (_) async {
-          final togglePinned = onTogglePinned;
-          if (togglePinned != null) unawaited(togglePinned());
-          return false;
-        },
-        background: _SwipeBackground(
-          alignment: Alignment.centerLeft,
-          isPinned: product.isPinned,
-        ),
-        secondaryBackground: _SwipeBackground(
-          alignment: Alignment.centerRight,
-          isPinned: product.isPinned,
-        ),
+    return Dismissible(
+      key: ValueKey('product-${product.id}'),
+      direction: onTogglePinned == null
+          ? DismissDirection.none
+          : DismissDirection.horizontal,
+      confirmDismiss: (_) async {
+        final togglePinned = onTogglePinned;
+        if (togglePinned != null) unawaited(togglePinned());
+        return false;
+      },
+      background: _SwipeBackground(
+        alignment: Alignment.centerLeft,
+        isPinned: product.isPinned,
+      ),
+      secondaryBackground: _SwipeBackground(
+        alignment: Alignment.centerRight,
+        isPinned: product.isPinned,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 120.0),
         child: DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: Colors.black38),
@@ -53,182 +53,215 @@ class ProductCard extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(1.0),
-            child: Row(
+            child: Table(
+              columnWidths: const {
+                0: FixedColumnWidth(140.0),
+                1: FlexColumnWidth(),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.top,
               children: [
-                SizedBox(
-                  width: 140.0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border(right: BorderSide(color: Colors.black26)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 1.0),
-                      child: Tooltip(
-                        message: 'Bilder im Vollbild',
-                        child: GestureDetector(
-                          onTap: product.images.isEmpty ? null : onOpenImages,
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(11.0),
-                                  bottomLeft: Radius.circular(11.0),
-                                ),
-                                child: ProductImage(
-                                  product: product,
-                                  imageHeight: 120.0,
-                                  imageWidth: 140.0,
-                                  iconSize: 120,
+                TableRow(
+                  children: [
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.fill,
+                      child: SizedBox(
+                        width: 140.0,
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              right: BorderSide(color: Colors.black26),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 1.0),
+                            child: Tooltip(
+                              message: 'Bilder im Vollbild',
+                              child: GestureDetector(
+                                onTap: product.images.isEmpty
+                                    ? null
+                                    : onOpenImages,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(11.0),
+                                        bottomLeft: Radius.circular(11.0),
+                                      ),
+                                      child: ProductImage(
+                                        product: product,
+                                        imageWidth: double.infinity,
+                                        imageHeight: double.infinity,
+                                        iconSize: 120,
+                                      ),
+                                    ),
+                                    if (product.isOrganic ||
+                                        product.isPromotion)
+                                      Positioned(
+                                        left: 6,
+                                        top: 6,
+                                        right: 6,
+                                        child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: [
+                                            if (product.isOrganic)
+                                              ProductBadge.bio(),
+                                            if (product.isPromotion)
+                                              ProductBadge.sale(),
+                                          ],
+                                        ),
+                                      ),
+                                    if (product.images.length > 1)
+                                      Positioned(
+                                        right: 6,
+                                        bottom: 3,
+                                        child: Badge(
+                                          label: Text(
+                                            '${product.images.length}',
+                                          ),
+                                          backgroundColor: Colors.black54,
+                                          child: const Icon(
+                                            Icons.photo_library,
+                                            size: 21,
+                                            color: Colors.white60,
+                                            shadows: [
+                                              BoxShadow(
+                                                color: Colors.black45,
+                                                blurRadius: 2,
+                                                offset: Offset(1, 1),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
-                              if (product.isOrganic || product.isPromotion)
-                                Positioned(
-                                  left: 6,
-                                  top: 6,
-                                  child: Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    children: [
-                                      if (product.isOrganic) ProductBadge.bio(),
-                                      if (product.isPromotion)
-                                        ProductBadge.sale(),
-                                    ],
-                                  ),
-                                ),
-                              if (product.images.length > 1)
-                                Positioned(
-                                  right: 6,
-                                  bottom: 3,
-                                  child: Badge(
-                                    label: Text('${product.images.length}'),
-                                    backgroundColor: Colors.black54,
-                                    child: const Icon(
-                                      Icons.photo_library,
-                                      size: 21,
-                                      color: Colors.white60,
-                                      shadows: [
-                                        BoxShadow(
-                                          color: Colors.black45,
-                                          blurRadius: 2,
-                                          offset: Offset(1, 1),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                Expanded(
-                  child: Material(
-                    color: product.isPromotion
-                        ? const Color(0xFFFFF0EA)
-                        : product.isOrganic
-                        ? const Color(0xFFF0F8EF)
-                        : Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(12.0),
-                      bottomRight: Radius.circular(12.0),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.only(
-                        topRight: Radius.circular(12.0),
-                        bottomRight: Radius.circular(12.0),
-                      ),
-                      onTap: code?.type.canShowBarcode == true
-                          ? onShowCode
-                          : null,
-                      onLongPress: onOpenDetails,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 12.0,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 118.0),
+                      child: Material(
+                        color: product.isPromotion
+                            ? const Color(0xFFFFF0EA)
+                            : product.isOrganic
+                            ? const Color(0xFFF0F8EF)
+                            : Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(12.0),
+                          bottomRight: Radius.circular(12.0),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  product.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                                Spacer(),
-                                if (product.isPinned)
-                                  Icon(
-                                    Icons.push_pin,
-                                    size: 18,
-                                    color: Color(0xffcc071e),
-                                    semanticLabel: 'Angepinnt',
-                                  ),
-                                Tooltip(
-                                  message: 'Produktdetails',
-                                  child: GestureDetector(
-                                    onTap: onOpenDetails,
-                                    child: Icon(Icons.info_outline, size: 20.0),
-                                  ),
-                                ),
-                              ],
+                        child: InkWell(
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(12.0),
+                            bottomRight: Radius.circular(12.0),
+                          ),
+                          onTap: code?.type.canShowBarcode == true
+                              ? onShowCode
+                              : null,
+                          onLongPress: onOpenDetails,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8.0,
+                              horizontal: 12.0,
                             ),
-                            Row(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    product.aliases.isEmpty
-                                        ? product.category
-                                        : '${product.category} · auch: ${product.aliases.join(', ')}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Spacer(),
-                            if (code != null)
-                              _CodeButton(code: code, onPressed: onShowCode)
-                            else
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.black54,
-                                    width: 1.5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 11,
-                                    vertical: 7,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        "Produkt veraltet!",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black54,
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            product.name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                        if (product.isPinned)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 1.0),
+                                            child: Icon(
+                                              Icons.push_pin,
+                                              size: 18,
+                                              color: Color(0xffcc071e),
+                                              semanticLabel: 'Angepinnt',
+                                            ),
+                                          ),
+                                        Tooltip(
+                                          message: 'Produktdetails',
+                                          child: GestureDetector(
+                                            onTap: onOpenDetails,
+                                            child: const Icon(
+                                              Icons.info_outline,
+                                              size: 20.0,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      product.aliases.isEmpty
+                                          ? product.category
+                                          : '${product.category} · auch: ${product.aliases.join(', ')}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                          ],
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: code != null
+                                      ? _CodeButton(
+                                          code: code,
+                                          onPressed: onShowCode,
+                                        )
+                                      : DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: Colors.black54,
+                                              width: 1.5,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 11,
+                                              vertical: 7,
+                                            ),
+                                            child: Text(
+                                              'Produkt veraltet!',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -249,6 +282,7 @@ class _CodeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final canShow = code.type.canShowBarcode;
     return Material(
+      key: const ValueKey('product-code-button'),
       borderRadius: BorderRadius.circular(10),
       color: Colors.white,
       child: DecoratedBox(
@@ -270,9 +304,7 @@ class _CodeButton extends StatelessWidget {
                     children: [
                       if (code.type == ProductCodeType.cashierTile) ...[
                         Text(
-                          'Bedienerkachel: ${code.displayValue}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          '${code.type.productListLabel}: ${code.displayValue}',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -284,16 +316,12 @@ class _CodeButton extends StatelessWidget {
                       ] else if (code.type == ProductCodeType.info) ...[
                         Text(
                           code.displayValue,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ] else if (code.type == ProductCodeType.barcode) ...[
                         Text(
                           'Barcode: Bitte scannen!',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -305,8 +333,6 @@ class _CodeButton extends StatelessWidget {
                       ] else ...[
                         Text(
                           '${code.type.label}: ${code.displayValue}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -319,8 +345,6 @@ class _CodeButton extends StatelessWidget {
                       if (code.secondaryDisplay case final secondary?)
                         Text(
                           secondary,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),

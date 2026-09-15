@@ -402,7 +402,7 @@ class _ObsoleteProductCard extends StatelessWidget {
                       ? () => onShowCode(code)
                       : null,
                   title: Text(
-                    '${code.type.label}: ${code.displayValue}',
+                    '${code.type.productListLabel}: ${code.displayValue}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       decoration: TextDecoration.lineThrough,
@@ -554,7 +554,7 @@ class _RetiredCodeCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '${hit.code.type.label}: ${hit.code.displayValue}',
+                                '${hit.code.type.productListLabel}: ${hit.code.displayValue}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   decoration: TextDecoration.lineThrough,
