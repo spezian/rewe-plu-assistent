@@ -47,6 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (controller.isSyncConfigured && !controller.hasMarketAccess) {
           return MarketAccessScreen(controller: controller);
         }
+        if (controller.isInitialMarketLoading) {
+          return _InitialMarketLoadingScreen(controller: controller);
+        }
         return Scaffold(
           appBar: AppBar(
             title: Text(allDestinations[_selectedTab].title),
@@ -122,6 +125,95 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _InitialMarketLoadingScreen extends StatelessWidget {
+  const _InitialMarketLoadingScreen({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = controller.syncState == AppSyncState.error;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasError) ...[
+                    Icon(
+                      Icons.cloud_off_outlined,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  Text(
+                    hasError
+                        ? 'Marktdaten konnten nicht geladen werden'
+                        : 'Marktdaten werden geladen',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    hasError
+                        ? controller.syncError ?? 'Bitte prüfe die Internetverbindung und versuche es erneut.'
+                        : 'Die Daten dieses Marktes werden zum ersten Mal heruntergeladen.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  if (!hasError) ...[
+                    const SizedBox(height: 22),
+                    Text(
+                      controller.initialTotalProducts == null
+                          ? 'Produkte werden ermittelt …'
+                          : '${controller.initialLoadedProducts} von '
+                                '${controller.initialTotalProducts} Produkten geladen',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    LinearProgressIndicator(
+                      value: controller.initialTotalProducts == null
+                          ? null
+                          : controller.initialTotalProducts == 0
+                          ? 1
+                          : controller.initialLoadedProducts /
+                                controller.initialTotalProducts!,
+                      minHeight: 8,
+                      borderRadius: BorderRadius.circular(8),
+                      color: reweDarkRed,
+                    ),
+                  ],
+                  if (hasError) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: controller.syncNow,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Erneut versuchen'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: controller.leaveMarket,
+                      child: const Text('Anderen Markt öffnen'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
