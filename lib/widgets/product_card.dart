@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rewe_plu_assistent/core/app_constants.dart';
 import 'package:rewe_plu_assistent/widgets/product_badge.dart';
 

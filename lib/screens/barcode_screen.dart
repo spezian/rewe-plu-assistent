@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rewe_plu_assistent/core/app_constants.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 

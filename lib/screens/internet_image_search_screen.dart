@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rewe_plu_assistent/core/app_constants.dart';
 
 import '../data/image_suggestion_service.dart';
