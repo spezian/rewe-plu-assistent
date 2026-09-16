@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -32,8 +33,8 @@ class LocalImageStorage {
   }
 
   ImageProvider<Object>? providerFor(String? reference) {
-    final bytes = reference == null ? null : _bytesFromDataUri(reference);
-    return bytes == null ? null : MemoryImage(bytes);
+    if (reference == null || !_isImageDataUri(reference)) return null;
+    return _DataUriImageProvider(reference);
   }
 
   Future<Uint8List?> readBytes(String reference) async =>
@@ -95,7 +96,7 @@ String _dataUri(String mimeType, Uint8List bytes) =>
     'data:$mimeType;base64,${base64Encode(bytes)}';
 
 Uint8List? _bytesFromDataUri(String reference) {
-  if (!reference.startsWith('data:image/') || !reference.contains(';base64,')) {
+  if (!_isImageDataUri(reference)) {
     return null;
   }
   try {
@@ -103,4 +104,55 @@ Uint8List? _bytesFromDataUri(String reference) {
   } on FormatException {
     return null;
   }
+}
+
+bool _isImageDataUri(String reference) =>
+    reference.startsWith('data:image/') && reference.contains(';base64,');
+
+/// Uses the data URI itself as the image-cache key.
+///
+/// Creating a new [MemoryImage] here would also create a new [Uint8List] on
+/// every widget rebuild. [MemoryImage] compares that list by identity, so the
+/// web image cache would treat the same stored image as a different image on
+/// every keystroke-triggered rebuild. Besides repeatedly decoding the image,
+/// that briefly replaces the current frame and makes images flicker.
+@immutable
+class _DataUriImageProvider extends ImageProvider<_DataUriImageProvider> {
+  const _DataUriImageProvider(this.dataUri);
+
+  final String dataUri;
+
+  @override
+  Future<_DataUriImageProvider> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture<_DataUriImageProvider>(this);
+
+  @override
+  ImageStreamCompleter loadImage(
+    _DataUriImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return MultiFrameImageStreamCompleter(
+      codec: _loadAsync(key, decode),
+      scale: 1,
+      debugLabel: 'DataUriImage',
+    );
+  }
+
+  Future<ui.Codec> _loadAsync(
+    _DataUriImageProvider key,
+    ImageDecoderCallback decode,
+  ) async {
+    final bytes = _bytesFromDataUri(key.dataUri);
+    if (bytes == null) {
+      throw const FormatException('Ungültige Bild-Data-URI.');
+    }
+    return decode(await ui.ImmutableBuffer.fromUint8List(bytes));
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is _DataUriImageProvider && other.dataUri == dataUri;
+
+  @override
+  int get hashCode => dataUri.hashCode;
 }
