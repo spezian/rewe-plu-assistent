@@ -210,6 +210,23 @@ class LocalDatabase {
     _activeMarketId = marketId;
   }
 
+  Future<bool> hasAcknowledgedAppNotice() async {
+    final rows = await _db.query(
+      'app_settings',
+      columns: const ['value'],
+      where: 'key = ?',
+      whereArgs: const ['app_notice_acknowledged'],
+    );
+    return rows.isNotEmpty && rows.single['value'] == 'true';
+  }
+
+  Future<void> acknowledgeAppNotice() async {
+    await _db.insert('app_settings', {
+      'key': 'app_notice_acknowledged',
+      'value': 'true',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   Future<MarketSession?> loadSavedMarketSession() async {
     final rows = await _db.query(
       'app_settings',
