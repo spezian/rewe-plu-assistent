@@ -221,6 +221,17 @@ class ProductCard extends StatelessWidget {
                                           .textTheme
                                           .bodySmall,
                                     ),
+                                    if (product.description.trim().isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          product.description.trim(),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(color: Colors.black54),
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 Padding(
@@ -347,6 +358,12 @@ class _CodeButton extends StatelessWidget {
                           secondary,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      if (code.note.trim().isNotEmpty)
+                        Text(
+                          code.note.trim(),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.black54),
                         ),
                     ],
                   ),
