@@ -67,7 +67,8 @@ class _AppNoticeDialogState extends State<_AppNoticeDialog> {
               'offiziell gewartete App. Sie wird ausschließlich von Dacjan '
               'gewartet.\n\n'
               'Die hinterlegten PLUs und anderen Codes können fehlerhaft oder '
-              'veraltet sein. Fehler bitte gerne melden.',
+              'veraltet sein. Fehler bitte gerne melden.\n\n'
+              'Vergiss nicht, glotzt nicht zu viel auf dein Handy!',
             ),
             if (_saveFailed) ...[
               const SizedBox(height: 16),
