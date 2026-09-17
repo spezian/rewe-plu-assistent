@@ -10,6 +10,7 @@ import 'app_scope.dart';
 import 'core/app_constants.dart';
 import 'data/product_repository.dart';
 import 'screens/home_screen.dart';
+import 'widgets/app_notice_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,7 +121,10 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
             checkmarkColor: Colors.white,
           ),
         ),
-        home: const HomeScreen(),
+        home: AppNoticeGate(
+          repository: widget.controller.repository,
+          child: const HomeScreen(),
+        ),
       ),
     );
   }

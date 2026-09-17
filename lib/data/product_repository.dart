@@ -15,6 +15,9 @@ class ProductRepository {
   final SupabaseClient? supabaseClient;
   late final SyncService _sync = SyncService(_database, supabaseClient);
 
+  bool _hasAcknowledgedAppNotice = false;
+  bool get hasAcknowledgedAppNotice => _hasAcknowledgedAppNotice;
+
   bool get isSyncConfigured => _sync.isConfigured;
   bool get hasMarketAccess => _sync.hasMarketAccess;
   bool get canEdit => _sync.canEdit;
@@ -23,7 +26,13 @@ class ProductRepository {
 
   Future<void> initialize() async {
     await _database.initialize();
+    _hasAcknowledgedAppNotice = await _database.hasAcknowledgedAppNotice();
     await _sync.initialize();
+  }
+
+  Future<void> acknowledgeAppNotice() async {
+    await _database.acknowledgeAppNotice();
+    _hasAcknowledgedAppNotice = true;
   }
 
   Future<List<Product>> getProducts() => _database.getProducts();
