@@ -4,6 +4,35 @@ import 'package:rewe_plu_assistent/models/product.dart';
 import 'package:rewe_plu_assistent/screens/product_form_screen.dart';
 
 void main() {
+  testWidgets('bietet REWE-Bildsuche auch ohne Unsplash-Schlüssel an', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 9, 16);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProductFormScreen(
+          product: Product(
+            id: 'image-search-product',
+            name: 'Pfirsich',
+            category: 'Obst',
+            createdAt: now,
+            updatedAt: now,
+            codes: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.ensureVisible(find.text('Bild hinzufügen'));
+    await tester.tap(find.text('Bild hinzufügen'));
+    await tester.pumpAndSettle();
+    final option = find.ancestor(
+      of: find.text('Bilder im Internet vorschlagen'),
+      matching: find.byType(ListTile),
+    );
+    expect(tester.widget<ListTile>(option).enabled, isTrue);
+    expect(find.text('REWE und Unsplash: „Pfirsich“'), findsOneWidget);
+  });
+
   testWidgets('lässt auch einen bereits gespeicherten Code entfernen', (
     tester,
   ) async {

@@ -23,8 +23,8 @@ mit Supabase abgeglichen.
   Ladezeiten
 - Cloud-Miniaturbilder werden beim Synchronisieren dauerhaft lokal gespeichert;
   Cloud-Vollbilder nach dem ersten Öffnen in der Galerie
-- Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
-  Unsplash
+- Fotos über Kamera, Galerie/Downloads oder die Bildsuche mit Tabs für
+  REWE-Produktbilder und Unsplash
 - Barcode-Erfassung per Kamera
 - getrennte Produktbestände für mehrere Märkte
 - Marktöffnung ohne Benutzerkonten: Marktnummer plus wahlweise Lesemodus ohne
@@ -88,6 +88,58 @@ Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
    einen `sb_secret_...`- oder `service_role`-Key in die App einbauen. Falls ein
    Secret-Key bereits für einen Web-Build verwendet wurde, diesen in Supabase
    widerrufen/rotieren.
+
+## REWE-Bildsuche einrichten
+
+Unter **Produkt bearbeiten → Bild hinzufügen → Bilder im Internet vorschlagen**
+öffnet sich eine gemeinsame Suche mit den Tabs **REWE** (vorausgewählt) und
+**Unsplash**. Der Produktname wird übernommen. Ein Klick auf ein Bild importiert
+es wie bisher samt Quelle in die Produktbilder. REWE benötigt keinen
+Unsplash-Schlüssel; nur der Unsplash-Tab verwendet `UNSPLASH_ACCESS_KEY`.
+
+Die REWE-Suche liest die Produktkarten der öffentlichen
+[REWE-Suchergebnisseite](https://www.rewe.de/suche/uebersicht?searchTerm=Pfirsich#produkte)
+aus. Rezeptbilder und Platzhalter werden ausgeschlossen. Es werden die Treffer
+der ersten Ergebnisseite gezeigt. Produktnamen, Bildquelle und ein Link zurück
+zu REWE bleiben erhalten; es wird keine freie Bildlizenz behauptet.
+
+Für konfigurierte Supabase-Projekte muss zusätzlich die mitgelieferte Funktion
+[rewe-images](supabase/functions/rewe-images/index.ts) bereitgestellt werden:
+
+```bash
+supabase functions deploy rewe-images --project-ref DEINE_PROJEKT_REFERENZ --no-verify-jwt
+```
+
+Die App verwendet automatisch `SUPABASE_URL/functions/v1/rewe-images`. Die
+Funktion ist absichtlich öffentlich und liefert ausschließlich öffentliche
+REWE-Suchergebnisse und Produktbilder von `img.rewe-static.de`. Sie nimmt keine
+Marktdaten, PINs oder Anmeldedaten entgegen. Bildadressen, Größen und
+Weiterleitungen sind eingeschränkt; Abrufe haben Zeit- und Größenlimits.
+Die Funktion wird vom bestehenden GitHub-Pages/APK-Workflow **nicht** automatisch
+bereitgestellt. Änderungen daran müssen erneut mit dem obigen Befehl deployt
+werden.
+
+Der Serverabruf ist für die Web-App erforderlich: REWE erlaubt der App weder das
+direkte Auslesen seiner Webseite noch den direkten Bilddownload per CORS. Die
+Funktion liefert die nötigen
+[CORS-Header](https://supabase.com/docs/guides/functions/cors)
+für Suche, Vorschaubilder und Bildimport. Ohne Supabase-Konfiguration versucht
+die native App den direkten REWE-Abruf; die Web-App zeigt einen Einrichtungshinweis.
+
+**Grenze des Scrapings:** REWE kann automatisierte Abrufe durch seinen Bot-Schutz
+blockieren (beim lokalen Live-Test: HTTP 403). Auch ein Proxy garantiert keinen
+Zugriff. Die App meldet eine Sperre oder eine veränderte Seitenstruktur als Fehler
+und bietet das Öffnen der REWE-Suche im Browser an. Das Öffnen allein importiert
+kein Bild. Die Auswertung wurde mit Produktkarten der echten Seite getestet;
+ein erfolgreicher Live-Abruf vom späteren Supabase-Server muss nach dem Deployment
+geprüft werden.
+
+Prüfungen für die Bildsuche:
+
+```bash
+flutter test test/image_suggestion_service_test.dart test/internet_image_search_screen_test.dart
+node --test supabase/functions/rewe-images/handler.test.mjs
+```
 
 ## Run/Build
 

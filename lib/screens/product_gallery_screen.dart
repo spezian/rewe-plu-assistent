@@ -160,10 +160,16 @@ class _ProductGalleryScreenState extends State<ProductGalleryScreen> {
       image.license != null;
 
   String _sourceLabel(ProductImageData image) {
+    final host = Uri.tryParse(image.sourcePageUrl ?? '')?.host ?? '';
+    final source = switch (host) {
+      'www.rewe.de' || 'rewe.de' => 'REWE',
+      'www.unsplash.com' || 'unsplash.com' => 'Unsplash',
+      _ => host,
+    };
     final parts = [
       if (image.attribution?.isNotEmpty == true) image.attribution!,
       if (image.license?.isNotEmpty == true) image.license!,
-      'Unsplash',
+      if (source.isNotEmpty && source != image.attribution) source,
     ];
     return parts.join(' · ');
   }
