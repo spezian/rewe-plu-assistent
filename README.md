@@ -34,6 +34,8 @@ mit Supabase abgeglichen.
 - Live-Aktualisierung geänderter Produkte auf allen geöffneten Geräten eines
   Marktes über Supabase Realtime
 - dauerhaft aktivierter Bildschirm-Wakelock, auch im Web
+- Kassenplan mit Tages-Zeitleisten, aktueller Planbesetzung und nächstem
+  Schichtwechsel; Import aus MyPlano-HTML und dauerhafte Rollen pro Markt
 
 ## Lokal starten
 

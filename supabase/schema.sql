@@ -627,3 +627,69 @@ create policy "market editors delete product images" on storage.objects
         and session.market_id::text = (storage.foldername(name))[1]
     )
   );
+
+-- Kassenplan: ein Dokument pro Markt, Änderungen werden pro Person/Tag/Rolle
+-- zusammengeführt. Unvollständige HTML-Ausschnitte löschen keine anderen Daten.
+create table if not exists public.cashier_plans (
+  market_id uuid primary key references public.markets(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.cashier_plans enable row level security;
+grant select, insert, update on public.cashier_plans to authenticated;
+
+drop policy if exists "market viewers read cashier plan" on public.cashier_plans;
+create policy "market viewers read cashier plan" on public.cashier_plans
+  for select to authenticated using (
+    exists (select 1 from public.market_sessions s
+      where s.user_id = auth.uid() and s.market_id = cashier_plans.market_id)
+  );
+drop policy if exists "market editors insert cashier plan" on public.cashier_plans;
+create policy "market editors insert cashier plan" on public.cashier_plans
+  for insert to authenticated with check (
+    exists (select 1 from public.market_sessions s
+      where s.user_id = auth.uid() and s.market_id = cashier_plans.market_id
+        and s.access_level = 'editor')
+  );
+drop policy if exists "market editors update cashier plan" on public.cashier_plans;
+create policy "market editors update cashier plan" on public.cashier_plans
+  for update to authenticated using (
+    exists (select 1 from public.market_sessions s
+      where s.user_id = auth.uid() and s.market_id = cashier_plans.market_id
+        and s.access_level = 'editor')
+  ) with check (
+    exists (select 1 from public.market_sessions s
+      where s.user_id = auth.uid() and s.market_id = cashier_plans.market_id
+        and s.access_level = 'editor')
+  );
+
+create or replace function public.apply_cashier_plan_changes(p_market_id uuid, p_changes jsonb)
+returns void language plpgsql security invoker set search_path = public as $$
+begin
+  if jsonb_typeof(p_changes) <> 'object'
+    or (p_changes ? 'people' and jsonb_typeof(p_changes->'people') <> 'object')
+    or (p_changes ? 'roles' and jsonb_typeof(p_changes->'roles') <> 'object')
+    or (p_changes ? 'days' and jsonb_typeof(p_changes->'days') <> 'object')
+    or (p_changes ? 'imports' and jsonb_typeof(p_changes->'imports') <> 'object') then
+    raise exception 'Invalid cashier_plan changes';
+  end if;
+  insert into public.cashier_plans(market_id, data) values (p_market_id, p_changes)
+  on conflict (market_id) do update set data = jsonb_build_object(
+    'people', coalesce(cashier_plans.data->'people', '{}'::jsonb) || coalesce(p_changes->'people', '{}'::jsonb),
+    'roles', coalesce(cashier_plans.data->'roles', '{}'::jsonb) || coalesce(p_changes->'roles', '{}'::jsonb),
+    'days', coalesce(cashier_plans.data->'days', '{}'::jsonb) || coalesce(p_changes->'days', '{}'::jsonb),
+    'imports', coalesce(cashier_plans.data->'imports', '{}'::jsonb) || coalesce(p_changes->'imports', '{}'::jsonb)
+  ), updated_at = now();
+end;
+$$;
+revoke all on function public.apply_cashier_plan_changes(uuid, jsonb) from public, anon;
+grant execute on function public.apply_cashier_plan_changes(uuid, jsonb) to authenticated;
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'cashier_plans') then
+    alter publication supabase_realtime add table public.cashier_plans;
+  end if;
+end;
+$$;

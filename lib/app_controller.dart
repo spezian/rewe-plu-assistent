@@ -8,6 +8,7 @@ import 'data/product_repository.dart';
 import 'data/imported_product_image.dart';
 import 'models/market_session.dart';
 import 'models/product.dart';
+import 'models/cashier_plan.dart';
 import 'utils/product_sort.dart';
 
 enum AppSyncState { localOnly, locked, idle, syncing, error }
@@ -27,9 +28,21 @@ class AppController extends ChangeNotifier {
   StreamSubscription<void>? _remoteChangesSubscription;
   Timer? _liveSyncTimer;
   bool _liveSyncRequested = false;
+  bool _isDisposed = false;
 
   List<Product> _products = const [];
   List<Product> get products => _products;
+  CashierPlan _cashierPlan = const CashierPlan();
+  CashierPlan get cashierPlan => _cashierPlan;
+
+  Future<void> saveCashierPlanPatch(Map<String, dynamic> patch) async {
+    await repository.saveCashierPlanPatch(patch);
+    if (_isDisposed) return;
+    await _reload();
+    if (_isDisposed) return;
+    notifyListeners();
+    if (hasMarketAccess) unawaited(syncNow());
+  }
 
   bool isLoading = true;
   bool _isInitialMarketLoading = false;
@@ -145,6 +158,7 @@ class AppController extends ChangeNotifier {
     _cancelScheduledLiveSync();
     await repository.leaveMarket();
     _products = const [];
+    _cashierPlan = const CashierPlan();
     _isInitialMarketLoading = false;
     _initialLoadedProducts = 0;
     _initialTotalProducts = null;
@@ -155,6 +169,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> syncNow() async {
+    if (_isDisposed) return;
     if (!isSyncConfigured || !hasMarketAccess) {
       if (isSyncConfigured) syncState = AppSyncState.locked;
       notifyListeners();
@@ -172,23 +187,26 @@ class AppController extends ChangeNotifier {
     final report = await repository.synchronize(
       onProgress: tracksInitialDownload
           ? (loadedProducts, totalProducts) {
+              if (_isDisposed) return;
               _initialLoadedProducts = loadedProducts;
               _initialTotalProducts = totalProducts;
               notifyListeners();
             }
           : null,
     );
+    if (_isDisposed) return;
     pendingChanges = report.pendingCount;
     syncError = report.error;
     syncState = report.succeeded ? AppSyncState.idle : AppSyncState.error;
     await _reload();
+    if (_isDisposed) return;
     if (report.succeeded) _isInitialMarketLoading = false;
     notifyListeners();
     if (_liveSyncRequested) _scheduleLiveSync();
   }
 
   void _scheduleLiveSync() {
-    if (!isSyncConfigured || !hasMarketAccess) return;
+    if (_isDisposed || !isSyncConfigured || !hasMarketAccess) return;
     _liveSyncRequested = true;
     _liveSyncTimer?.cancel();
     _liveSyncTimer = Timer(liveSyncDebounce, _runScheduledLiveSync);
@@ -217,6 +235,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reload() async {
     _products = await repository.getProducts();
+    _cashierPlan = await repository.getCashierPlan();
     _products = [..._products]..sort(compareProductsForOverview);
     pendingChanges = await repository.pendingCount();
   }
@@ -230,6 +249,8 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
     _cancelScheduledLiveSync();
     _connectivitySubscription?.cancel();
     _remoteChangesSubscription?.cancel();

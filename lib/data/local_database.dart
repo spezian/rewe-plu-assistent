@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/market_session.dart';
+import '../models/cashier_plan.dart';
 import '../models/product.dart';
 import 'database_platform.dart';
 
@@ -208,6 +209,79 @@ class LocalDatabase {
 
   void setActiveMarket(String? marketId) {
     _activeMarketId = marketId;
+  }
+
+  Future<CashierPlan> getCashierPlan() async {
+    final marketId = _activeMarketId;
+    if (marketId == null) return const CashierPlan();
+    final rows = await _db.query(
+      'app_settings',
+      where: 'key = ?',
+      whereArgs: ['cashier_plan:$marketId'],
+    );
+    return rows.isEmpty
+        ? const CashierPlan()
+        : CashierPlan(
+            Map<String, dynamic>.from(
+              jsonDecode(rows.single['value'] as String) as Map,
+            ),
+          );
+  }
+
+  Future<void> saveCashierPlanPatch(Map<String, dynamic> patch) async {
+    final marketId = _requireActiveMarketId();
+    await _db.transaction((tx) async {
+      final rows = await tx.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: ['cashier_plan:$marketId'],
+      );
+      final current = rows.isEmpty
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(
+              jsonDecode(rows.single['value'] as String) as Map,
+            );
+      await tx.insert('app_settings', {
+        'key': 'cashier_plan:$marketId',
+        'value': jsonEncode(CashierPlan.mergeData(current, patch)),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      final pending = await tx.query(
+        'sync_queue',
+        where: 'product_id = ? AND market_id = ?',
+        whereArgs: ['__cashier_plan__', marketId],
+      );
+      final pendingPatch = pending.isEmpty
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(
+              jsonDecode(pending.single['payload'] as String) as Map,
+            );
+      await _replaceQueueEntry(
+        tx,
+        '__cashier_plan__',
+        'cashier_plan',
+        CashierPlan.mergeData(pendingPatch, patch),
+        marketId: marketId,
+      );
+    });
+  }
+
+  Future<void> applyRemoteCashierPlan(
+    String marketId,
+    Map<String, dynamic> data,
+  ) async {
+    await _db.transaction((tx) async {
+      final pending = await tx.query(
+        'sync_queue',
+        where: 'product_id = ? AND market_id = ?',
+        whereArgs: ['__cashier_plan__', marketId],
+        limit: 1,
+      );
+      if (pending.isNotEmpty) return;
+      await tx.insert('app_settings', {
+        'key': 'cashier_plan:$marketId',
+        'value': jsonEncode(data),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
   }
 
   Future<bool> hasAcknowledgedAppNotice() async {
@@ -456,16 +530,18 @@ class LocalDatabase {
     DatabaseExecutor transaction,
     String productId,
     String action,
-    Map<String, Object?> payload,
-  ) async {
+    Map<String, Object?> payload, {
+    String? marketId,
+  }) async {
+    final scopedMarketId = marketId ?? _requireActiveMarketId();
     await transaction.delete(
       'sync_queue',
       where: 'product_id = ? AND market_id = ?',
-      whereArgs: [productId, _requireActiveMarketId()],
+      whereArgs: [productId, scopedMarketId],
     );
     await transaction.insert('sync_queue', {
       'product_id': productId,
-      'market_id': _requireActiveMarketId(),
+      'market_id': scopedMarketId,
       'action': action,
       'payload': jsonEncode(payload),
       'created_at': DateTime.now().toUtc().toIso8601String(),

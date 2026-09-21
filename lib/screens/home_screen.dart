@@ -13,6 +13,7 @@ import 'product_detail_screen.dart';
 import 'product_form_screen.dart';
 import 'product_gallery_screen.dart';
 import 'search_screen.dart';
+import 'cashier_plan_screen.dart';
 
 class Destination {
   const Destination(this.index, this.title, this.navBarName, this.icon);
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<Destination> allDestinations = <Destination>[
     Destination(0, 'Kassenmeister', 'Produkte', Icons.list_alt_outlined),
     Destination(1, 'Suche', 'Suche', Icons.search),
-    Destination(1, 'Kassenbelegung', 'Belegung', Icons.work_history_outlined),
+    Destination(2, 'Kassenplan', 'Kassenplan', Icons.calendar_month_outlined),
   ];
 
   int _selectedTab = 0;
@@ -78,10 +79,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const ProductListPage(),
               SearchScreen(isActive: _selectedTab == 1),
-              Container(color: Colors.white),
+              CashierPlanScreen(
+                key: ValueKey(controller.repository.marketSession?.marketId),
+                isActive: _selectedTab == 2,
+              ),
             ],
           ),
-          floatingActionButton: controller.canEdit
+          floatingActionButton: controller.canEdit && _selectedTab != 2
               ? FloatingActionButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
