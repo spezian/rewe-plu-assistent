@@ -2,6 +2,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/product.dart';
+import '../models/cashier_plan.dart';
 import '../models/market_session.dart';
 import 'local_image_storage.dart';
 import 'local_database.dart';
@@ -36,6 +37,13 @@ class ProductRepository {
   }
 
   Future<List<Product>> getProducts() => _database.getProducts();
+
+  Future<CashierPlan> getCashierPlan() => _database.getCashierPlan();
+
+  Future<void> saveCashierPlanPatch(Map<String, dynamic> patch) {
+    _requireEditor();
+    return _database.saveCashierPlanPatch(patch);
+  }
 
   Future<void> saveProduct(Product product) {
     _requireEditor();

@@ -141,6 +141,18 @@ class SyncService {
       }
       if (canEdit) await _pushPendingChanges();
       await _pullRemoteChanges(onProgress: onProgress);
+      final marketId = _marketSession!.marketId;
+      final plan = await _client
+          .from('cashier_plans')
+          .select('data')
+          .eq('market_id', marketId)
+          .maybeSingle();
+      if (plan != null) {
+        await _database.applyRemoteCashierPlan(
+          marketId,
+          Map<String, dynamic>.from(plan['data'] as Map),
+        );
+      }
       return SyncReport(pendingCount: await _database.pendingCount());
     } catch (error) {
       return SyncReport(
@@ -158,7 +170,12 @@ class SyncService {
     final queue = await _database.getQueue();
     for (final entry in queue) {
       try {
-        if (entry.action == 'delete') {
+        if (entry.action == 'cashier_plan') {
+          await client.rpc(
+            'apply_cashier_plan_changes',
+            params: {'p_market_id': marketId, 'p_changes': entry.payload},
+          );
+        } else if (entry.action == 'delete') {
           await client
               .from('products')
               .update({'deleted_at': entry.payload['deleted_at']})
@@ -409,6 +426,11 @@ class SyncService {
 
   String _friendlyError(Object error) {
     final text = error.toString();
+    if (text.contains('cashier_plan')) {
+      return 'Der Kassenplan konnte nicht synchronisiert werden. '
+          'Bitte das aktuelle supabase/schema.sql im SQL Editor ausführen. '
+          'Lokale Änderungen bleiben gespeichert.';
+    }
     if (text.contains('MARKET_ACCESS_DENIED')) {
       return 'Marktnummer oder PIN ist falsch.';
     }
@@ -493,6 +515,13 @@ class SyncService {
     }
 
     channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'cashier_plans',
+          filter: filter,
+          callback: notifyRemoteChange,
+        )
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',

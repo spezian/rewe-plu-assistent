@@ -9,9 +9,30 @@ import 'package:rewe_plu_assistent/data/product_repository.dart';
 import 'package:rewe_plu_assistent/data/sync_service.dart';
 import 'package:rewe_plu_assistent/models/market_session.dart';
 import 'package:rewe_plu_assistent/models/product.dart';
+import 'package:rewe_plu_assistent/models/cashier_plan.dart';
 import 'package:rewe_plu_assistent/screens/home_screen.dart';
 
 void main() {
+  test(
+    'beendet einen laufenden Sync nach dispose ohne Benachrichtigung',
+    () async {
+      final repository = _LiveSyncRepository();
+      final controller = AppController(
+        repository,
+        connectivityChanges: const Stream<List<ConnectivityResult>>.empty(),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      await _waitFor(() => controller.syncState == AppSyncState.idle);
+      final blocked = repository.blockNextSync();
+      final pending = controller.syncNow();
+      await _waitFor(() => repository.syncCalls == 2);
+      controller.dispose();
+      blocked.complete();
+      await pending;
+    },
+  );
+
   test('bündelt schnelle Realtime-Ereignisse zu einem Sync', () async {
     final repository = _LiveSyncRepository();
     final controller = AppController(
@@ -148,6 +169,9 @@ class _LiveSyncRepository extends ProductRepository {
 
   @override
   Future<List<Product>> getProducts() async => localProducts;
+
+  @override
+  Future<CashierPlan> getCashierPlan() async => const CashierPlan();
 
   @override
   Future<int> pendingCount() async => 0;

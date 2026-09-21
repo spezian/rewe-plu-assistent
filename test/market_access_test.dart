@@ -55,7 +55,7 @@ void main() {
 
     expect(find.text('Markt öffnen'), findsOneWidget);
     expect(
-      find.textContaining('nicht angezeigt oder vorgeschlagen'),
+      find.text('Lesender Zugriff ohne PIN'),
       findsOneWidget,
     );
     expect(find.text('Markt-PIN'), findsNothing);
