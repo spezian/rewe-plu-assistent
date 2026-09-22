@@ -670,6 +670,8 @@ begin
     or (p_changes ? 'people' and jsonb_typeof(p_changes->'people') <> 'object')
     or (p_changes ? 'roles' and jsonb_typeof(p_changes->'roles') <> 'object')
     or (p_changes ? 'days' and jsonb_typeof(p_changes->'days') <> 'object')
+    or (p_changes ? 'breaks' and jsonb_typeof(p_changes->'breaks') <> 'object')
+    or (p_changes ? 'under18' and jsonb_typeof(p_changes->'under18') <> 'object')
     or (p_changes ? 'imports' and jsonb_typeof(p_changes->'imports') <> 'object') then
     raise exception 'Invalid cashier_plan changes';
   end if;
@@ -678,7 +680,9 @@ begin
     'people', coalesce(cashier_plans.data->'people', '{}'::jsonb) || coalesce(p_changes->'people', '{}'::jsonb),
     'roles', coalesce(cashier_plans.data->'roles', '{}'::jsonb) || coalesce(p_changes->'roles', '{}'::jsonb),
     'days', coalesce(cashier_plans.data->'days', '{}'::jsonb) || coalesce(p_changes->'days', '{}'::jsonb),
-    'imports', coalesce(cashier_plans.data->'imports', '{}'::jsonb) || coalesce(p_changes->'imports', '{}'::jsonb)
+    'imports', coalesce(cashier_plans.data->'imports', '{}'::jsonb) || coalesce(p_changes->'imports', '{}'::jsonb),
+    'breaks', coalesce(cashier_plans.data->'breaks', '{}'::jsonb) || coalesce(p_changes->'breaks', '{}'::jsonb),
+    'under18', coalesce(cashier_plans.data->'under18', '{}'::jsonb) || coalesce(p_changes->'under18', '{}'::jsonb)
   ), updated_at = now();
 end;
 $$;

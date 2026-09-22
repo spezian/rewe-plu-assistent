@@ -11,6 +11,7 @@ import '../app_scope.dart';
 import '../core/app_constants.dart';
 import '../data/myplano_import.dart';
 import '../models/cashier_plan.dart';
+import '../widgets/cashier_break_dialog.dart';
 
 const _cashierColor = Color(0xFF087F73);
 const _managerColor = Color(0xFF6550A3);
@@ -89,6 +90,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
         final today = DateUtils.isSameDay(_date, now);
         final minute = now.hour * 60 + now.minute;
         final people = cashierDayPeople(plan, _date, role: _role);
+        final freeDay = plan.freeDayReason(_date);
         final working = people.where((p) => p.day.shifts.isNotEmpty).toList()
           ..sort((a, b) {
             final compare = a.day.shifts.first.start.compareTo(
@@ -99,17 +101,14 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                 : compare;
           });
         final visible = working
-            .where(
-              (p) => !_nowOnly || p.day.shifts.any((s) => s.contains(minute)),
-            )
+            .where((p) => !_nowOnly || p.day.isAvailableAt(minute))
             .toList();
         final absent = people.where((p) => p.day.isAbsent).toList();
         final unknown = people
             .where((p) => p.day.shifts.isEmpty && !p.day.isAbsent)
             .toList();
-        final active = working
-            .where((p) => p.day.shifts.any((s) => s.contains(minute)))
-            .length;
+        final active = working.where((p) => p.day.isAvailableAt(minute)).length;
+        final onBreak = working.where((p) => p.day.isOnBreak(minute)).length;
         final start =
             working.fold<int>(
               360,
@@ -164,6 +163,17 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                   ),
                   const SizedBox(height: 8),
                   _dateNavigation(),
+                  if (freeDay != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: _message(
+                        Icons.event_available_outlined,
+                        freeDay == 'FT'
+                            ? 'Feiertag · alle frei'
+                            : 'Sonntag · alle frei',
+                        'Heute ist für das gesamte Team ein freier Tag.',
+                      ),
+                    ),
                   const SizedBox(height: 14),
                   if (_busy)
                     const Padding(
@@ -220,7 +230,12 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                             : null,
                       )
                     else ...[
-                      _summary(working.length, today ? active : null),
+                      if (freeDay == null)
+                        _summary(
+                          working.length,
+                          today ? active : null,
+                          today ? onBreak : 0,
+                        ),
                       if (today && working.isNotEmpty)
                         _nextChange(working, minute),
                       const SizedBox(height: 10),
@@ -266,16 +281,41 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                               start: start,
                               end: end,
                               minute: today ? minute : null,
+                              breakPlan: plan.breakFor(person.person.id, _date),
+                              showBreakHints: controller.canEdit,
+                              onEditBreak:
+                                  controller.canEdit &&
+                                      (plan
+                                                  .breakFor(
+                                                    person.person.id,
+                                                    _date,
+                                                  )
+                                                  .duration >
+                                              0 ||
+                                          plan.breakStart(
+                                                person.person.id,
+                                                _date,
+                                              ) !=
+                                              null)
+                                  ? () => showDialog<void>(
+                                      context: context,
+                                      builder: (_) => CashierBreakDialog(
+                                        controller: controller,
+                                        person: person.person,
+                                        date: _date,
+                                      ),
+                                    )
+                                  : null,
                             ),
                           ),
                         const Padding(
                           padding: EdgeInsets.only(top: 4, bottom: 12),
                           child: Text(
-                            'Schichtzeiten laut MyPlano. Pausen und die Zuordnung zu einzelnen Kassen sind nicht enthalten.',
+                            'Schichtzeiten laut MyPlano. Orange markiert die eingetragenen Pausen.',
                             style: TextStyle(fontSize: 12, color: _muted),
                           ),
                         ),
-                      ] else
+                      ] else if (freeDay == null)
                         _message(
                           Icons.event_available_outlined,
                           _nowOnly
@@ -374,7 +414,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
     ),
   );
 
-  Widget _summary(int count, int? active) => Container(
+  Widget _summary(int count, int? active, int onBreak) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: const Color(0xFF233D34),
@@ -391,7 +431,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
               Text(
                 active == null
                     ? '$count Personen eingeplant'
-                    : '$active laut Plan jetzt da',
+                    : '$active laut Plan verfügbar',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -402,7 +442,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
               Text(
                 active == null
                     ? 'Für den ausgewählten Tag'
-                    : '$count Personen über den Tag verteilt',
+                    : '$count Personen über den Tag verteilt${onBreak > 0 ? ' · $onBreak in Pause' : ''}',
                 style: const TextStyle(color: Color(0xFFCCDBD4), fontSize: 12),
               ),
             ],
@@ -421,21 +461,37 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
   );
 
   Widget _nextChange(List<CashierDayPerson> people, int minute) {
-    final events = <({int time, String name, bool arriving})>[];
+    final events = <({int time, String name, String action})>[];
     for (final p in people) {
       for (final shift in p.day.shifts) {
         if (shift.start > minute && shift.start < 1440) {
           events.add((
             time: shift.start,
             name: p.person.displayName,
-            arriving: true,
+            action: 'Kommt',
           ));
         }
         if (shift.end > minute && shift.end < 1440) {
           events.add((
             time: shift.end,
             name: p.person.displayName,
-            arriving: false,
+            action: 'Geht',
+          ));
+        }
+      }
+      for (final pause in p.day.breaks) {
+        if (pause.start > minute && pause.start < 1440) {
+          events.add((
+            time: pause.start,
+            name: p.person.displayName,
+            action: 'Pause',
+          ));
+        }
+        if (pause.end > minute && pause.end < 1440) {
+          events.add((
+            time: pause.end,
+            name: p.person.displayName,
+            action: 'Zurück aus Pause',
           ));
         }
       }
@@ -443,16 +499,14 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
     if (events.isEmpty) return const SizedBox.shrink();
     events.sort((a, b) => a.time.compareTo(b.time));
     final next = events.where((e) => e.time == events.first.time);
-    final arriving = next
-        .where((e) => e.arriving)
-        .map((e) => e.name)
-        .toSet()
-        .join(', ');
-    final leaving = next
-        .where((e) => !e.arriving)
-        .map((e) => e.name)
-        .toSet()
-        .join(', ');
+    final groups = <String, String>{
+      for (final action in ['Kommt', 'Geht', 'Pause', 'Zurück aus Pause'])
+        action: next
+            .where((e) => e.action == action)
+            .map((e) => e.name)
+            .toSet()
+            .join(', '),
+    };
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Container(
@@ -471,20 +525,12 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                 color: Color(0xFF233D34),
               ),
             ),
-            if (arriving.isNotEmpty)
+            for (final group in groups.entries.where((e) => e.value.isNotEmpty))
               Padding(
                 padding: const EdgeInsets.only(top: 5),
                 child: Text(
-                  'Kommt: $arriving',
+                  '${group.key}: ${group.value}',
                   style: const TextStyle(fontSize: 13),
-                ),
-              ),
-            if (leaving.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text(
-                  'Geht: $leaving',
-                  style: const TextStyle(fontSize: 13, color: _muted),
                 ),
               ),
           ],
@@ -773,21 +819,29 @@ class _ShiftCard extends StatelessWidget {
     required this.start,
     required this.end,
     this.minute,
+    required this.breakPlan,
+    required this.showBreakHints,
+    this.onEditBreak,
   });
   final CashierDayPerson entry;
   final int start;
   final int end;
   final int? minute;
+  final CashierBreakPlan breakPlan;
+  final bool showBreakHints;
+  final VoidCallback? onEditBreak;
 
   @override
   Widget build(BuildContext context) {
     final color = _roleColor(entry.person.role);
-    final active =
-        minute != null && entry.day.shifts.any((s) => s.contains(minute!));
+    final active = minute != null && entry.day.isAvailableAt(minute!);
+    final onBreak = minute != null && entry.day.isOnBreak(minute!);
     final finished =
         minute != null && entry.day.shifts.every((s) => s.end <= minute!);
     final status = minute == null
         ? entry.person.role.label
+        : onBreak
+        ? 'In Pause bis ${planTime(entry.day.breaks.firstWhere((s) => s.contains(minute!)).end)}'
         : active
         ? 'Jetzt da'
         : finished
@@ -852,6 +906,12 @@ class _ShiftCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onEditBreak != null)
+                  IconButton(
+                    tooltip: 'Pause für ${entry.person.displayName}',
+                    icon: const Icon(Icons.free_breakfast_outlined, size: 20),
+                    onPressed: onEditBreak,
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -904,6 +964,29 @@ class _ShiftCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                    for (final pause in entry.day.breaks)
+                      Positioned(
+                        left:
+                            (pause.start.clamp(start, end) - start) /
+                            (end - start) *
+                            constraints.maxWidth,
+                        width:
+                            (pause.end.clamp(start, end) -
+                                pause.start.clamp(start, end)) /
+                            (end - start) *
+                            constraints.maxWidth,
+                        top: 1,
+                        bottom: 1,
+                        child: Tooltip(
+                          message: 'Pause ${pause.label}',
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8A13B),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (minute != null && minute! >= start && minute! <= end)
                       Positioned(
                         left:
@@ -942,6 +1025,40 @@ class _ShiftCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (entry.day.breaks.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  entry.day.breaks
+                      .map((s) => 'Pause ${s.label} · ${s.end - s.start} Min.')
+                      .join(' · '),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF825013),
+                  ),
+                ),
+              )
+            else if (showBreakHints &&
+                entry.day.breakIssue == null &&
+                breakPlan.duration > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Pause noch offen · ${breakPlan.duration} Min.',
+                  style: const TextStyle(fontSize: 12, color: _muted),
+                ),
+              ),
+            if (showBreakHints && entry.day.breakIssue != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Pause prüfen: ${entry.day.breakIssue}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -960,6 +1077,7 @@ class _CashierTeamScreenState extends State<CashierTeamScreen> {
   late final List<CashierPerson> _people = widget.controller.cashierPlan.people;
   late final String? _marketId;
   final Map<String, String> _changes = {};
+  final Map<String, bool> _ageChanges = {};
   String _query = '';
   bool _saving = false;
 
@@ -1051,6 +1169,23 @@ class _CashierTeamScreenState extends State<CashierTeamScreen> {
                                 }
                               }),
                       ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Unter 18 Jahre'),
+                        subtitle: const Text(
+                          'Gesetzliche Pausenregel für Jugendliche',
+                        ),
+                        value: _ageChanges[person.id] ?? person.under18,
+                        onChanged: _saving || !widget.controller.canEdit
+                            ? null
+                            : (value) => setState(() {
+                                if (value == person.under18) {
+                                  _ageChanges.remove(person.id);
+                                } else {
+                                  _ageChanges[person.id] = value;
+                                }
+                              }),
+                      ),
                     ],
                   ),
                 );
@@ -1086,8 +1221,11 @@ class _CashierTeamScreenState extends State<CashierTeamScreen> {
       if (widget.controller.repository.marketSession?.marketId != _marketId) {
         throw StateError('Der Markt wurde gewechselt.');
       }
-      if (_changes.isNotEmpty) {
-        await widget.controller.saveCashierPlanPatch({'roles': _changes});
+      if (_changes.isNotEmpty || _ageChanges.isNotEmpty) {
+        await widget.controller.saveCashierPlanPatch({
+          'roles': _changes,
+          'under18': _ageChanges,
+        });
       }
       if (mounted) Navigator.pop(context);
     } catch (error) {
