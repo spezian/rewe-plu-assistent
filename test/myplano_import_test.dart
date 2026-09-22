@@ -59,6 +59,26 @@ void main() {
   });
 
   test(
+    'FT imports as a free day for everyone without an unknown-code warning',
+    () {
+      final imported = parse(
+        exportHtml(
+          rows:
+              '${personRow('Becker, Anna', ['08:00', '16:30'])}'
+              '${personRow('Klein, Cleo', ['FT'])}',
+        ),
+      );
+      final plan = const CashierPlan().merge(imported.patch);
+      expect(
+        plan.day('becker, anna', DateTime(2026, 9, 21)).status,
+        'Feiertag',
+      );
+      expect(plan.day('becker, anna', DateTime(2026, 9, 21)).shifts, isEmpty);
+      expect(imported.warnings.join(), isNot(contains('unbekannte Kürzel')));
+    },
+  );
+
+  test(
     'identifies partial exports and ignores groups and non-current rows',
     () {
       final imported = parse(

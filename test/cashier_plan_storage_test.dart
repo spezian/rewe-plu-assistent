@@ -111,4 +111,50 @@ void main() {
       throwsStateError,
     );
   });
+
+  test(
+    'breaks and youth flags persist and merge with imports and deletion',
+    () async {
+      await database.saveCashierPlanPatch({
+        'breaks': {'2026-09-21|anna': 720},
+        'under18': {'anna': true},
+      });
+      await database.saveCashierPlanPatch({
+        'people': {'anna': 'Becker, Anna'},
+      });
+      final reopened = LocalDatabase();
+      await reopened.initialize();
+      reopened.setActiveMarket('market-a');
+      expect(
+        (await reopened.getCashierPlan()).breakStart(
+          'anna',
+          DateTime(2026, 9, 21),
+        ),
+        720,
+      );
+      expect((await reopened.getCashierPlan()).people.single.under18, isTrue);
+      expect(
+        (await database.getQueue()).single.payload['breaks']['2026-09-21|anna'],
+        720,
+      );
+      await database.saveCashierPlanPatch({
+        'breaks': {'2026-09-21|anna': null},
+      });
+      expect(
+        (await reopened.getCashierPlan()).breakStart(
+          'anna',
+          DateTime(2026, 9, 21),
+        ),
+        isNull,
+      );
+      expect(
+        (await database.getQueue()).single.payload['breaks'].containsKey(
+          '2026-09-21|anna',
+        ),
+        isTrue,
+      );
+      database.setActiveMarket('market-b');
+      expect((await database.getCashierPlan()).field('under18'), isEmpty);
+    },
+  );
 }
