@@ -16,7 +16,7 @@ jobs:
       - uses: subosito/flutter-action@v1
       - uses: spezian/flutter-gh-pages@main
         with:
-          customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
+          customArgs: --dart-define="SUPABASE_URL=${{secrets.SECRET_SB_URL}}" --dart-define="SUPABASE_PUBLISHABLE_KEY=${{secrets.SECRET_SB_PUBLISHABLE_KEY}}" --dart-define="UNSPLASH_ACCESS_KEY=${{secrets.SECRET_UN_ACCESS_KEY}}"
           site: kassenmeister.dacjan.eu
   android-release-build:
     runs-on: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
       - uses: spezian/flutter-android-build-action@main
         id: android-build
         with:
-          customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
+          customArgs: --dart-define="SUPABASE_URL=${{secrets.SECRET_SB_URL}}" --dart-define="SUPABASE_PUBLISHABLE_KEY=${{secrets.SECRET_SB_PUBLISHABLE_KEY}}" --dart-define="UNSPLASH_ACCESS_KEY=${{secrets.SECRET_UN_ACCESS_KEY}}"
           release: true
       - name: Archive APK
         uses: actions/upload-artifact@v4
