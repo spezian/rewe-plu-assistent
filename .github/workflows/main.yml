@@ -12,12 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2 # Only works with v2
-      - uses: subosito/flutter-action@v1
-      - uses: spezian/flutter-gh-pages@main
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          customArgs: --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co" --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ" --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
-          site: kassenmeister.dacjan.eu
+          flutter-version: '3.47.4'
+          channel: stable
+      - name: Build offline web app
+        run: >-
+          flutter build web --release --wasm --no-web-resources-cdn
+          --dart-define="SUPABASE_URL=https://ktncyyacblnayjxevwul.supabase.co"
+          --dart-define="SUPABASE_PUBLISHABLE_KEY=sb_publishable_ip8SXP_QJN7MvB1JYPjleg_vPH0gIGQ"
+          --dart-define="UNSPLASH_ACCESS_KEY=U1MRJ6yGWFYoj4dssCzDD-G3h2SbVCmYrIPvXA17WTI"
+      - name: Generate complete offline cache
+        run: python3 tool/generate_offline_cache.py
+      - name: Check offline cache
+        run: |
+          python3 -m unittest discover -s test -p 'offline_cache_generator_test.py'
+          node --test test/offline_service_worker_test.mjs
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          cname: kassenmeister.dacjan.eu
   android-release-build:
     runs-on: ubuntu-latest
     

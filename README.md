@@ -1,4 +1,4 @@
-# REWE PLU Assistent
+# Kassenmeister
 
 Eine Flutter-App für das schnelle Finden von PLUs, Kassenpreise und schwer
 scanbare Produktbarcodes. Die App funktioniert offline-first: Änderungen landen
@@ -50,7 +50,8 @@ Für die Browser-Version:
 
 ```bash
 flutter run -d chrome
-flutter build web
+flutter build web --release --wasm --no-web-resources-cdn
+python3 tool/generate_offline_cache.py
 ```
 
 Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
