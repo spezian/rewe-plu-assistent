@@ -84,7 +84,7 @@ class _RewePluAppState extends State<RewePluApp> with WidgetsBindingObserver {
       controller: widget.controller,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'PLU Assistent',
+        title: 'Kassenmeister',
         locale: const Locale('de', 'DE'),
         supportedLocales: const [Locale('de', 'DE')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,

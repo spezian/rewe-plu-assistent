@@ -1,9 +1,9 @@
 {
-    "name": "REWE PLU Assistent",
-    "short_name": "PLU Assistent",
+    "name": "Kassenmeister",
+    "short_name": "Kassenmeister",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#FFFFFF",
+    "background_color": "#cc071e",
     "theme_color": "#CC071E",
     "description": "PLUs, Preise und Barcodes schnell finden.",
     "orientation": "portrait-primary",
