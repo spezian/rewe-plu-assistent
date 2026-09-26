@@ -41193,7 +41193,7 @@ $S:3}
 A.b6c.prototype={
 $1(a){var s=A.el().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/af7e796e161ae0bb1ff0758c71a7105418bd9ded/":s)+a},
+return(s==null?"canvaskit/":s)+a},
 $S:32}
 A.a0g.prototype={
 gv(a){var s=this.a
@@ -139323,7 +139323,7 @@ this.a.c.m()
 this.aL()},
 K(a){var s=null,r=A.bgB(B.aZ,s,s,B.bn),q=this.a.c,p=A.baP(B.bn,B.k,s,s)
 p=A.D7(B.XE,s,B.a0b,A.bgp(s,B.dJ,s,B.k,s,s,s,s,s,s,s,A.I(a).ok.at.ce(B.p),s,s,A.I(a).ok.at.ce(B.k),s,B.bo,s,s,s,s,new A.aR(B.ef,1,B.v,-1),s),r,new A.Ay(p),B.a7g,B.k,new A.D5(B.bn,B.hQ,B.bn),!0)
-return new A.FV(q,new A.Jo(new A.FU(this.a.c.a,B.a5_,s),"PLU Assistent",p,B.Hb,B.agW,B.aeM,!1,s),s)}}
+return new A.FV(q,new A.Jo(new A.FU(this.a.c.a,B.a5_,s),"Kassenmeister",p,B.Hb,B.agW,B.aeM,!1,s),s)}}
 A.ak2.prototype={}
 A.j8.prototype={
 J(){return"CashierRole."+this.b}}

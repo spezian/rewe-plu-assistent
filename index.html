@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,29 +18,115 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="REWE PLU Assistent für PLUs, Preise und Barcodes.">
+  <meta name="description" content="Kassenmeister für PLUs, Preise und Barcodes.">
+  <meta name="theme-color" content="#cc071e">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="PLU Assistent">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Kassenmeister">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>REWE PLU Assistent</title>
+  <title>Kassenmeister</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    body { margin: 0; background: #cc071e; }
+    #startup {
+      position: fixed; inset: 0; z-index: 9999; display: grid;
+      place-content: center; padding: 24px; text-align: center;
+      justify-items: center;
+      background: #cc071e; color: #fff; font: 16px/1.5 system-ui, sans-serif;
+    }
+    #startup-logo { width: min(80vw, 420px); height: auto; margin-bottom: 28px; }
+    #startup p { max-width: 380px; }
+    #startup button {
+      background: white; color: #cc071e; border: 0; border-radius: 12px;
+      padding: 12px 20px; font: inherit; cursor: pointer;
+    }
+    .update-ui { font: 15px/1.5 system-ui, sans-serif; color: #242424; }
+    #app-update {
+      position: fixed; z-index: 10000;
+      top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px;
+      max-width: 420px; margin: auto; padding: 16px 20px;
+      border: 1px solid #eadadc; border-radius: 18px;
+      background: #fff; box-shadow: 0 6px 24px #0003;
+    }
+    .update-ui p { margin: 0 0 12px; }
+    .update-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .update-ui button {
+      min-height: 44px; border: 0; border-radius: 24px; padding: 10px 16px;
+      font: inherit; font-weight: 600; background: #cc071e; color: #fff; cursor: pointer;
+    }
+    .update-ui button.secondary { background: #fff; color: #a80519; }
+    .update-ui button:focus-visible { outline: 3px solid #176a64; outline-offset: 2px; }
+    .update-ui button:disabled { opacity: .55; cursor: wait; }
+    #update-confirm {
+      width: min(380px, calc(100vw - 80px)); border: 0;
+      padding: 24px; border-radius: 24px; background: #fff;
+    }
+    #update-confirm::backdrop { background: #0007; }
+    #update-confirm h2 { margin: 0 0 12px; font-size: 22px; }
+    #update-error { color: #a80519; }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="startup" role="status" aria-live="polite">
+    <img id="startup-logo" src="brand/long_logo.png" width="645" height="205"
+         alt="dacjan's kassenmeister" fetchpriority="high">
+    <p id="startup-message">App wird gestartet …</p>
+    <button id="startup-retry" type="button" hidden>Erneut laden</button>
+    <noscript>Bitte JavaScript aktivieren, um die App zu nutzen.</noscript>
+  </div>
+  <aside id="app-update" class="update-ui" aria-label="App-Update" hidden>
+    <p role="status">Eine neue Version ist bereit.</p>
+    <div class="update-actions">
+      <button id="update-later" class="secondary" type="button">Später</button>
+      <button id="update-now" type="button">Jetzt aktualisieren</button>
+    </div>
+  </aside>
+  <dialog id="update-confirm" class="update-ui" aria-labelledby="update-title"
+          aria-describedby="update-description">
+    <h2 id="update-title">Kassenmeister neu starten?</h2>
+    <p id="update-description">Bitte speichere zuerst offene Eingaben.
+      Nicht gespeicherte Änderungen gehen beim Neustart verloren.
+      Bereits gespeicherte Daten bleiben erhalten.</p>
+    <p id="update-error" role="alert" hidden></p>
+    <div class="update-actions">
+      <button id="update-cancel" class="secondary" type="button" autofocus>Zurück</button>
+      <button id="update-restart" type="button">Neu starten</button>
+    </div>
+  </dialog>
+  <script>
+    (() => {
+      let started = false;
+      const message = document.getElementById('startup-message');
+      const retry = document.getElementById('startup-retry');
+      retry.addEventListener('click', () => location.reload());
+      window.pluStartup = {
+        status(text) { if (!started) message.textContent = text; },
+        fail(error) {
+          if (started) return;
+          console.error('App startup failed:', error);
+          message.textContent = 'Die App konnte nicht starten. Bitte mit dem Internet '
+            + 'verbinden und erneut laden. Für die Offline-Nutzung die installierte '
+            + 'App zuerst einmal mit Internet vollständig öffnen.';
+          retry.hidden = false;
+        },
+      };
+      const timeout = setTimeout(() => window.pluStartup.fail('Startup timed out'), 45000);
+      window.addEventListener('flutter-first-frame', () => {
+        started = true;
+        clearTimeout(timeout);
+        document.getElementById('startup').remove();
+      }, {once: true});
+      window.addEventListener('error', (event) => window.pluStartup.fail(event.error || event.message), true);
+      window.addEventListener('unhandledrejection', (event) => window.pluStartup.fail(event.reason));
+    })();
+  </script>
+  <script src="pwa_updates.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -38,10 +38,61 @@ addEventListener("message", eventListener);
 if (!window._flutter) {
   window._flutter = {};
 }
-_flutter.buildConfig = {"engineRevision":"af7e796e161ae0bb1ff0758c71a7105418bd9ded","wasmHashes":{"wimp.wasm":"e924eaafd801d41e017d178f3fd5cf8a417f641fe35c9ed34a4e1d7582283e0c","chromium/canvaskit.wasm":"ae8ff1d858140f7b1300ced3fa89fb8c9dce0a400a0f4f1e11f6dcfb3315fdcf","webparagraph/canvaskit.wasm":"0ce1b05082efdc8529550e8a01f6ff0593972d55525035010e26f5600aa9f254","canvaskit.wasm":"fbed517a43e82452404446683f00f2e876d835aed84410695759e67b6bb01cd3","skwasm.wasm":"e540fd5e8303b7b68ec2718cb49e9c421f8ade3075b15e02a7059a62654df9a1","skwasm_heavy.wasm":"565f5cc1cca6ab120f11934b105f01fec4b58b480c82e0889dca93af8e6f8635"},"builds":[{"compileTarget":"dart2wasm","renderer":"skwasm","mainWasmPath":"main.dart.wasm","jsSupportRuntimePath":"main.dart.mjs"},{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"}]};
+_flutter.buildConfig = {"engineRevision":"06a2e2a110089dff50fe635cffd2a61e1b24fbcd","wasmHashes":{"wimp.wasm":"e924eaafd801d41e017d178f3fd5cf8a417f641fe35c9ed34a4e1d7582283e0c","chromium/canvaskit.wasm":"ae8ff1d858140f7b1300ced3fa89fb8c9dce0a400a0f4f1e11f6dcfb3315fdcf","webparagraph/canvaskit.wasm":"0ce1b05082efdc8529550e8a01f6ff0593972d55525035010e26f5600aa9f254","canvaskit.wasm":"fbed517a43e82452404446683f00f2e876d835aed84410695759e67b6bb01cd3","skwasm.wasm":"e540fd5e8303b7b68ec2718cb49e9c421f8ade3075b15e02a7059a62654df9a1","skwasm_heavy.wasm":"565f5cc1cca6ab120f11934b105f01fec4b58b480c82e0889dca93af8e6f8635"},"builds":[{"compileTarget":"dart2wasm","renderer":"skwasm","mainWasmPath":"main.dart.wasm","jsSupportRuntimePath":"main.dart.mjs"},{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"}],"useLocalCanvasKit":true};
 
-_flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerVersion: "2660963888" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
+
+(async () => {
+  // Use the bundled engine on Safari and Chromium, never the Google CDN.
+  const config = {canvasKitBaseUrl: new URL('canvaskit/', document.baseURI).href};
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register(
+        new URL('flutter_service_worker.js', document.baseURI),
+        {updateViaCache: 'none'},
+      );
+      window.kassenmeisterUpdates?.watch(registration);
+      if (!registration.active) {
+        window.pluStartup?.status('Offline-Dateien werden vorbereitet …');
+        // First launch: allow the complete app shell to finish caching. A slow
+        // or failed cache must not prevent using the app while online.
+        await new Promise((resolve, reject) => {
+          const worker = registration.installing || registration.waiting;
+          if (!worker) return reject(new Error('No service worker available'));
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Offline preparation timed out'));
+          }, 20000);
+          const cleanup = () => {
+            clearTimeout(timeout);
+            worker.removeEventListener('statechange', check);
+          };
+          const check = () => {
+            if (worker.state === 'activated') {
+              cleanup();
+              resolve();
+            } else if (worker.state === 'redundant') {
+              cleanup();
+              reject(new Error('Offline preparation failed'));
+            }
+          };
+          worker.addEventListener('statechange', check);
+          check();
+        });
+      }
+    } catch (error) {
+      console.warn('Offline cache unavailable:', error);
+    }
   }
-});
+  window.pluStartup?.status('App wird gestartet …');
+  await _flutter.loader.load({
+    config,
+    onEntrypointLoaded: async (engineInitializer) => {
+      try {
+        const appRunner = await engineInitializer.initializeEngine(config);
+        await appRunner.runApp();
+      } catch (error) {
+        window.pluStartup?.fail(error);
+      }
+    },
+  });
+})().catch((error) => window.pluStartup?.fail(error));
