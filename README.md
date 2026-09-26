@@ -36,6 +36,8 @@ mit Supabase abgeglichen.
 - dauerhaft aktivierter Bildschirm-Wakelock, auch im Web
 - Kassenplan mit Tages-Zeitleisten, aktueller Planbesetzung und nächstem
   Schichtwechsel; Import aus MyPlano-HTML und dauerhafte Rollen pro Markt
+- Fotoimport von Wochenplänen über Azure Layout, mit Korrekturvorschau für
+  Personen und Schichten
 
 ## Lokal starten
 
@@ -108,6 +110,25 @@ flutter build apk \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=DEIN_PUBLISHABLE_KEY \
   --dart-define=UNSPLASH_ACCESS_KEY=DEIN_ACCESS_KEY \
 ```
+
+## Fotoimport mit Azure Layout einrichten
+1. Im [Azure-Portal](https://portal.azure.com/) eine **Document Intelligence**-
+   Ressource anlegen, zum Ausprobieren mit Tarif **Free F0**. Der Tarif umfasst
+   500 Seiten pro Monat. Unter **Schlüssel und Endpunkt** einen Schlüssel und
+   die Endpunkt-Adresse dieser Ressource kopieren.
+2. Im vorhandenen Supabase-Projekt unter **Edge Functions → Secrets** diese
+   beiden Werte speichern:
+
+   | Secret | Wert |
+   | --- | --- |
+   | `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` | Endpunkt aus Azure, z. B. `https://DEINE-RESSOURCE.cognitiveservices.azure.com` |
+   | `AZURE_DOCUMENT_INTELLIGENCE_KEY` | Einer der Azure-Ressourcenschlüssel |
+3. Mit der angemeldeten Supabase CLI die Funktion aus diesem Projekt
+   bereitstellen (die Projekt-ID steht im Supabase-Dashboard):
+
+   ```bash
+   supabase functions deploy parse-plan-photo --project-ref DEINE_PROJEKT_ID
+   ```
 
 # Lizenz
 Das Projekt ist lizenziert unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.

@@ -10,8 +10,10 @@ import '../app_controller.dart';
 import '../app_scope.dart';
 import '../core/app_constants.dart';
 import '../data/myplano_import.dart';
+import '../data/photo_plan_service.dart';
 import '../models/cashier_plan.dart';
 import '../widgets/cashier_break_dialog.dart';
+import 'photo_plan_review_screen.dart';
 
 const _cashierColor = Color(0xFF087F73);
 const _managerColor = Color(0xFF6550A3);
@@ -154,8 +156,10 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                           icon: const Icon(Icons.manage_accounts_outlined),
                         ),
                         IconButton(
-                          tooltip: 'MyPlano-HTML importieren',
-                          onPressed: _busy ? null : () => _import(controller),
+                          tooltip: 'Plan importieren',
+                          onPressed: _busy
+                              ? null
+                              : () => _chooseImport(controller),
                           icon: const Icon(Icons.file_upload_outlined),
                         ),
                       ],
@@ -311,7 +315,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                         const Padding(
                           padding: EdgeInsets.only(top: 4, bottom: 12),
                           child: Text(
-                            'Schichtzeiten laut MyPlano. Orange markiert die eingetragenen Pausen.',
+                            'Schichtzeiten laut importiertem Plan. Orange markiert die eingetragenen Pausen.',
                             style: TextStyle(fontSize: 12, color: _muted),
                           ),
                         ),
@@ -343,7 +347,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
                       _message(
                         Icons.info_outline,
                         'Kein Import für diesen Monat',
-                        'Wähle einen importierten Monat oder lade eine weitere MyPlano-HTML-Datei.',
+                        'Wähle einen importierten Monat oder importiere einen weiteren Plan als HTML oder Foto.',
                       )
                     else
                       _sourceInfo(metadata),
@@ -574,6 +578,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
   );
 
   Widget _sourceInfo(Map<String, dynamic> metadata) {
+    final source = metadata['source'] == 'photo' ? 'Planfoto' : 'MyPlano';
     final imported = DateTime.tryParse(metadata['importedAt'] as String? ?? '')
         ?.toLocal();
     // Older imports stored the former AZ warning alongside their source data.
@@ -591,8 +596,8 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
       ),
       title: Text(
         warnings.isEmpty
-            ? 'MyPlano · Importdetails'
-            : 'MyPlano · Export mit Hinweisen',
+            ? '$source · Importdetails'
+            : '$source · Export mit Hinweisen',
         style: const TextStyle(fontSize: 13, color: _muted),
       ),
       subtitle: imported == null
@@ -605,7 +610,7 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            metadata['fileName'] as String? ?? 'HTML-Import',
+            metadata['fileName'] as String? ?? 'Planimport',
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -627,15 +632,26 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
       Icons.calendar_month_outlined,
       'Der Kassenplan beginnt hier',
       controller.canEdit
-          ? 'Importiere den Gruppenkalender aus MyPlano als HTML-Datei. Wähle danach aus, wer an der Kasse und in der Marktleitung arbeitet.'
+          ? 'Importiere eine MyPlano-HTML-Datei oder ein Foto des Wochenplans. Wähle danach aus, wer an der Kasse und in der Marktleitung arbeitet.'
           : 'Für diesen Markt wurde noch kein Kassenplan importiert. Der Import ist im Bearbeitungsmodus möglich.',
       action: controller.canEdit
           ? Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: FilledButton.icon(
-                onPressed: _busy ? null : () => _import(controller),
-                icon: const Icon(Icons.file_upload_outlined),
-                label: const Text('MyPlano-HTML importieren'),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => _import(controller),
+                    icon: const Icon(Icons.file_upload_outlined),
+                    label: const Text('MyPlano-HTML importieren'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _importPhoto(controller),
+                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                    label: const Text('Planfoto importieren'),
+                  ),
+                ],
               ),
             )
           : null,
@@ -676,6 +692,144 @@ class _CashierPlanScreenState extends State<CashierPlanScreen> {
           builder: (_) => CashierTeamScreen(controller: controller),
         ),
       );
+
+  Future<void> _chooseImport(AppController controller) async {
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.file_upload_outlined),
+              title: const Text('MyPlano-HTML importieren'),
+              onTap: () => Navigator.pop(context, 'html'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_photo_alternate_outlined),
+              title: const Text('Planfoto importieren'),
+              subtitle: const Text('JPG oder PNG · Schichten ohne Pausen'),
+              onTap: () => Navigator.pop(context, 'photo'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || !controller.canEdit) return;
+    if (source == 'html') await _import(controller);
+    if (source == 'photo') await _importPhoto(controller);
+  }
+
+  Future<void> _importPhoto(AppController controller) async {
+    final client = controller.repository.supabaseClient;
+    final marketId = controller.repository.marketSession?.marketId;
+    if (!controller.canEdit) return;
+    if (client == null || marketId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Für die Fotoerkennung bitte einen mit Supabase verbundenen Markt öffnen.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Planfoto importieren'),
+          content: const Text(
+            'Wähle ein JPG- oder PNG-Foto mit maximal 4 MB. Für die Erkennung wird es an Microsoft Azure übertragen. Danach kannst du die erkannten Schichten prüfen und korrigieren. Pausen werden nicht übernommen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Foto auswählen'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true || !mounted) return;
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
+      );
+      if (file == null || !mounted) return;
+      if (await file.length() > maxPlanPhotoBytes) {
+        throw const FormatException(
+          'Das Foto ist zu groß (maximal 4 MB). Bitte einen kleineren Ausschnitt verwenden.',
+        );
+      }
+      final bytes = await file.readAsBytes();
+      if (!controller.canEdit ||
+          controller.repository.marketSession?.marketId != marketId) {
+        throw const FormatException(
+          'Der Marktzugang wurde geändert. Bitte den Import erneut starten.',
+        );
+      }
+      final draft = await recognizePlanPhoto(
+        client: client,
+        marketId: marketId,
+        bytes: bytes,
+      );
+      if (!mounted) return;
+      if (!controller.canEdit ||
+          controller.repository.marketSession?.marketId != marketId) {
+        throw const FormatException(
+          'Der Marktzugang wurde geändert. Bitte den Import erneut starten.',
+        );
+      }
+      final patch = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (_) => PhotoPlanReviewScreen(
+            draft: draft,
+            existing: controller.cashierPlan,
+            fileName: file.name,
+            photo: bytes,
+          ),
+        ),
+      );
+      if (patch == null || !mounted) return;
+      if (!controller.canEdit ||
+          controller.repository.marketSession?.marketId != marketId) {
+        throw const FormatException(
+          'Der Marktzugang wurde geändert. Bitte den Import erneut starten.',
+        );
+      }
+      await controller.saveCashierPlanPatch(patch);
+      if (!mounted) return;
+      final firstDate =
+          (patch['days'] as Map).keys
+              .map((key) => (key as String).split('|').first)
+              .toList()
+            ..sort();
+      _selectDate(DateTime.parse(firstDate.first));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${firstDate.length} Einträge übernommen. Pausen bleiben unverändert.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is FormatException ? error.message : 'Fotoimport fehlgeschlagen. Bitte die Verbindung prüfen und erneut versuchen.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _import(AppController controller) async {
     final marketId = controller.repository.marketSession?.marketId;
