@@ -233,7 +233,7 @@ void main() {
   testWidgets('viewer has no import or team controls', (tester) async {
     final controller = PlanController();
     await mount(tester, controller);
-    expect(find.byTooltip('MyPlano-HTML importieren'), findsNothing);
+    expect(find.byTooltip('Plan importieren'), findsNothing);
     expect(find.byTooltip('Team & Rollen'), findsNothing);
     expect(find.byTooltip('Pause für Anna Becker'), findsNothing);
     await tester.scrollUntilVisible(find.text('Anna Becker'), 200);
@@ -246,6 +246,15 @@ void main() {
     await tester.scrollUntilVisible(find.text('Ben Wolf'), 200);
     expect(find.textContaining('Pause noch offen'), findsNothing);
     expect(find.textContaining('Pause prüfen'), findsNothing);
+  });
+
+  testWidgets('editor chooses between HTML and photo import', (tester) async {
+    await mount(tester, PlanController(canEdit: true));
+    await tester.tap(find.byTooltip('Plan importieren'));
+    await tester.pumpAndSettle();
+    expect(find.text('MyPlano-HTML importieren'), findsOneWidget);
+    expect(find.text('Planfoto importieren'), findsOneWidget);
+    expect(find.text('JPG oder PNG · Schichten ohne Pausen'), findsOneWidget);
   });
 
   testWidgets(

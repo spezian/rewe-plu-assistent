@@ -1,0 +1,6 @@
+project_id = "rewe-plu-assistent"
+
+[functions.parse-plan-photo]
+# The handler verifies the session via Supabase Auth and the editor's current
+# market via current_market_access before forwarding any image to Azure.
+verify_jwt = false
