@@ -14,6 +14,26 @@ import 'package:rewe_plu_assistent/screens/home_screen.dart';
 
 void main() {
   test(
+    'nachgeladene Bilder aktualisieren lokal ohne weiteren Cloud-Abgleich',
+    () async {
+      final repository = _LiveSyncRepository();
+      final controller = AppController(
+        repository,
+        connectivityChanges: const Stream<List<ConnectivityResult>>.empty(),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      await _waitFor(() => controller.syncState == AppSyncState.idle);
+      repository.localProducts = [
+        _downloadedProduct().copyWith(name: 'Mit Bildcache'),
+      ];
+      repository.emitLocalChange();
+      await _waitFor(() => controller.products.single.name == 'Mit Bildcache');
+      expect(repository.syncCalls, 1);
+    },
+  );
+
+  test(
     'beendet einen laufenden Sync nach dispose ohne Benachrichtigung',
     () async {
       final repository = _LiveSyncRepository();
@@ -142,6 +162,8 @@ Future<void> _waitFor(bool Function() condition) async {
 
 class _LiveSyncRepository extends ProductRepository {
   final StreamController<void> _changes = StreamController<void>.broadcast();
+  final StreamController<void> _localChanges =
+      StreamController<void>.broadcast();
   Completer<void>? _blockedSync;
   int syncCalls = 0;
   List<Product> localProducts = const [];
@@ -163,6 +185,8 @@ class _LiveSyncRepository extends ProductRepository {
 
   @override
   Stream<void> get remoteChanges => _changes.stream;
+  @override
+  Stream<void> get localChanges => _localChanges.stream;
 
   @override
   Future<void> initialize() async {}
@@ -193,9 +217,13 @@ class _LiveSyncRepository extends ProductRepository {
   }
 
   void emitRemoteChange() => _changes.add(null);
+  void emitLocalChange() => _localChanges.add(null);
 
   @override
-  Future<void> dispose() => _changes.close();
+  Future<void> dispose() async {
+    await _changes.close();
+    await _localChanges.close();
+  }
 }
 
 Product _downloadedProduct() {

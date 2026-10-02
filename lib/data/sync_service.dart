@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,13 +22,25 @@ typedef SyncProgressCallback = void Function(
 );
 
 class SyncService {
-  SyncService(this._database, this._client);
+  SyncService(
+    this._database,
+    this._client, {
+    this.imageStorage = const LocalImageStorage(),
+    this.requestTimeout = const Duration(seconds: 12),
+  });
 
   final LocalDatabase _database;
-  final LocalImageStorage _imageStorage = const LocalImageStorage();
+  final LocalImageStorage imageStorage;
+  final Duration requestTimeout;
   final SupabaseClient? _client;
   final StreamController<void> _remoteChanges =
       StreamController<void>.broadcast();
+  final StreamController<void> _localChanges =
+      StreamController<void>.broadcast();
+  final Map<String, ProductImageData> _thumbnailBacklog = {};
+  final Set<String> _thumbnailInFlight = {};
+  Future<void>? _thumbnailTask;
+  bool _needsAccessValidation = true;
   bool _isRunning = false;
   bool _isDisposed = false;
   MarketSession? _marketSession;
@@ -39,6 +52,7 @@ class SyncService {
   bool get hasMarketAccess => _marketSession != null;
   bool get canEdit => _marketSession?.canEdit ?? false;
   Stream<void> get remoteChanges => _remoteChanges.stream;
+  Stream<void> get localChanges => _localChanges.stream;
 
   Future<void> initialize() async {
     final client = _client;
@@ -56,20 +70,8 @@ class SyncService {
       _setMarketSession(saved);
     }
 
-    try {
-      await _ensureAnonymousSession();
-      final response = await client.rpc('current_market_access');
-      final restored = _sessionFromRpc(response);
-      if (restored == null) {
-        await _clearMarketSession();
-      } else {
-        await _persistMarketSession(restored);
-      }
-    } catch (_) {
-      // A cached market remains usable offline. Server-side RLS still validates
-      // its access level before the next synchronization.
-      await _restartRealtimeSubscription();
-    }
+    // Startup only reads local state. Authentication and market validation
+    // belong to the background sync, never before the first visible frame.
   }
 
   Future<void> enterMarket({required String marketNumber, String? pin}) async {
@@ -139,6 +141,22 @@ class SyncService {
       if (!hasMarketAccess) {
         throw const AuthException('Bitte zuerst einen Markt öffnen.');
       }
+      if (_needsAccessValidation) {
+        final cachedSession = _marketSession;
+        await _ensureAnonymousSession().timeout(requestTimeout);
+        final response = await _client
+            .rpc('current_market_access')
+            .timeout(requestTimeout);
+        if (_isDisposed || !identical(cachedSession, _marketSession)) {
+          return SyncReport(pendingCount: await _database.pendingCount());
+        }
+        final restored = _sessionFromRpc(response);
+        if (restored == null) {
+          await _clearMarketSession();
+          throw const AuthException('Bitte den Markt erneut öffnen.');
+        }
+        await _persistMarketSession(restored);
+      }
       if (canEdit) await _pushPendingChanges();
       await _pullRemoteChanges(onProgress: onProgress);
       final marketId = _marketSession!.marketId;
@@ -146,7 +164,8 @@ class SyncService {
           .from('cashier_plans')
           .select('data')
           .eq('market_id', marketId)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(requestTimeout);
       if (plan != null) {
         await _database.applyRemoteCashierPlan(
           marketId,
@@ -217,10 +236,12 @@ class SyncService {
       String? remoteUrl = imageMap['remote_url'] as String?;
       String? remoteThumbnailUrl = imageMap['remote_thumbnail_url'] as String?;
       final localPath = imageMap['local_path'] as String?;
-      if (localPath != null && localPath.isNotEmpty) {
-        final bytes = await _imageStorage.readBytes(localPath);
+      if ((remoteUrl == null || remoteUrl.isEmpty) &&
+          localPath != null &&
+          localPath.isNotEmpty) {
+        final bytes = await imageStorage.readBytes(localPath);
         if (bytes != null) {
-          final extension = _imageStorage.extensionFor(localPath);
+          final extension = imageStorage.extensionFor(localPath);
           final remotePath = storagePathForProductImage(
             currentUrl: remoteUrl,
             marketId: marketId,
@@ -244,12 +265,12 @@ class SyncService {
         }
       }
       final localThumbnailPath = imageMap['local_thumbnail_path'] as String?;
-      if (localThumbnailPath != null && localThumbnailPath.isNotEmpty) {
-        final thumbnailBytes = await _imageStorage.readBytes(
-          localThumbnailPath,
-        );
+      if ((remoteThumbnailUrl == null || remoteThumbnailUrl.isEmpty) &&
+          localThumbnailPath != null &&
+          localThumbnailPath.isNotEmpty) {
+        final thumbnailBytes = await imageStorage.readBytes(localThumbnailPath);
         if (thumbnailBytes != null) {
-          final extension = _imageStorage.extensionFor(localThumbnailPath);
+          final extension = imageStorage.extensionFor(localThumbnailPath);
           final remotePath = storagePathForProductImage(
             currentUrl: remoteThumbnailUrl,
             marketId: marketId,
@@ -314,114 +335,188 @@ class SyncService {
     }
   }
 
-  Future<void> _pullRemoteChanges({SyncProgressCallback? onProgress}) async {
-    final client = _client!;
-    final rawProducts = await client.from('products').select();
-    final totalProducts = rawProducts
-        .where((product) => product['deleted_at'] == null)
-        .length;
-    var loadedProducts = 0;
-    onProgress?.call(loadedProducts, totalProducts);
-
-    void reportProductLoaded() {
-      loadedProducts += 1;
-      onProgress?.call(loadedProducts, totalProducts);
-    }
-
-    final rawCodes = await client.from('product_codes').select();
-    final rawImages = await client.from('product_images').select();
-    final codeMapsByProduct = <String, List<Map<String, dynamic>>>{};
-    final imageMapsByProduct = <String, List<Map<String, dynamic>>>{};
-    for (final rawCode in rawCodes) {
-      final codeMap = Map<String, dynamic>.from(rawCode);
-      final productId = codeMap['product_id'] as String;
-      codeMapsByProduct.putIfAbsent(productId, () => []).add(codeMap);
-    }
-    for (final rawImage in rawImages) {
-      final imageMap = Map<String, dynamic>.from(rawImage);
-      final productId = imageMap['product_id'] as String;
-      imageMapsByProduct.putIfAbsent(productId, () => []).add(imageMap);
-    }
-
-    for (final rawProduct in rawProducts) {
-      final productMap = Map<String, dynamic>.from(rawProduct);
-      final productId = productMap['id'] as String;
-      if (await _database.hasPendingChange(productId)) {
-        if (productMap['deleted_at'] == null) reportProductLoaded();
-        continue;
-      }
-      if (productMap['deleted_at'] != null) {
-        await _database.deleteProduct(productId, enqueue: false);
-        continue;
-      }
-
-      final existing = await _database.getProduct(productId);
-      final remoteUpdated = DateTime.parse(productMap['updated_at'] as String);
-      final existingImages = {
-        for (final image in existing?.images ?? const <ProductImageData>[])
-          image.id: image,
-      };
-      final images = (imageMapsByProduct[productId] ?? const []).map((
-        imageMap,
-      ) {
-        final existingImage = existingImages[imageMap['id']];
-        final remoteUrl = imageMap['remote_url'] as String?;
-        final remoteThumbnailUrl = imageMap['remote_thumbnail_url'] as String?;
-        return ProductImageData.fromRemoteMap(
-          imageMap,
-          existingLocalPath: existingImage?.remoteUrl == remoteUrl
-              ? existingImage?.localPath
-              : null,
-          existingLocalThumbnailPath:
-              existingImage?.remoteThumbnailUrl == remoteThumbnailUrl
-              ? existingImage?.localThumbnailPath
-              : null,
-        );
-      }).toList()..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-      if (existing != null &&
-          !remoteUpdated.isAfter(existing.updatedAt.toUtc())) {
-        // Bildzeilen können sich unabhängig vom Produkt-Zeitstempel ändern.
-        // Deshalb wird ihre lokale Kopie auch bei unverändertem Produkt
-        // aktualisiert.
-        await _database.applyRemoteImages(productId, images);
-      } else {
-        final codes = (codeMapsByProduct[productId] ?? const [])
-            .map(ProductCode.fromRemoteMap)
-            .toList();
-        await _database.applyRemoteProduct(
-          Product.fromRemoteMap(productMap, codes, images: images),
-        );
-      }
-      await _cacheRemoteThumbnails(images);
-      reportProductLoaded();
+  Future<List<Map<String, dynamic>>> _readTable(
+    String table,
+    String marketId,
+  ) async {
+    const pageSize = 500;
+    final rows = <Map<String, dynamic>>[];
+    for (var offset = 0; ; offset += pageSize) {
+      var query = _client!.from(table).select();
+      if (table == 'products') query = query.eq('market_id', marketId);
+      final page = await query
+          .order('id')
+          .range(offset, offset + pageSize - 1)
+          .timeout(requestTimeout);
+      rows.addAll(page);
+      if (page.length < pageSize) return rows;
     }
   }
 
-  Future<void> _cacheRemoteThumbnails(List<ProductImageData> images) async {
-    await Future.wait(
-      images.map((image) async {
-        final existingPath = image.localThumbnailPath;
-        if (existingPath != null &&
-            await _imageStorage.readBytes(existingPath) != null) {
-          return;
-        }
-        final remoteUrl = image.remoteThumbnailUrl;
-        if (remoteUrl == null || remoteUrl.isEmpty) return;
-        try {
-          final localPath = await _imageStorage.cacheImageFromUrl(
-            remoteUrl,
-            thumbnail: true,
-          );
-          await _database.updateLocalImageCache(
-            image.id,
-            thumbnailPath: localPath,
-          );
-        } catch (_) {
-          // Der normale Netzwerk-Fallback bleibt verfügbar. Beim nächsten Sync
-          // wird ein fehlender lokaler Cache erneut versucht.
-        }
-      }),
+  Future<void> _pullRemoteChanges({SyncProgressCallback? onProgress}) async {
+    final marketId = _marketSession!.marketId;
+    // Independent requests run together; pagination prevents the API row limit
+    // from silently dropping products, codes or images in larger markets.
+    final snapshots = await Future.wait([
+      _readTable('products', marketId),
+      _readTable('product_codes', marketId),
+      _readTable('product_images', marketId),
+    ]);
+    if (_isDisposed || _marketSession?.marketId != marketId) return;
+    final rawProducts = snapshots[0];
+    final total = rawProducts.where((row) => row['deleted_at'] == null).length;
+    onProgress?.call(0, total);
+    final localProducts = {
+      for (final product in await _database.getProducts()) product.id: product,
+    };
+    final pending = (await _database.getQueue())
+        .map((entry) => entry.productId)
+        .toSet();
+    final codesByProduct = <String, List<ProductCode>>{};
+    final imagesByProduct = <String, List<Map<String, dynamic>>>{};
+    for (final row in snapshots[1]) {
+      final code = ProductCode.fromRemoteMap(row);
+      codesByProduct.putIfAbsent(code.productId, () => []).add(code);
+    }
+    for (final row in snapshots[2]) {
+      imagesByProduct
+          .putIfAbsent(row['product_id'] as String, () => [])
+          .add(row);
+    }
+    final changed = <Product>[];
+    final deleted = <String>[];
+    final thumbnails = <ProductImageData>[];
+    for (final row in rawProducts) {
+      final id = row['id'] as String;
+      if (pending.contains(id)) continue;
+      final existing = localProducts[id];
+      if (row['deleted_at'] != null) {
+        if (existing != null) deleted.add(id);
+        continue;
+      }
+      final existingImages = {
+        for (final image in existing?.images ?? <ProductImageData>[])
+          image.id: image,
+      };
+      final images = (imagesByProduct[id] ?? []).map((imageRow) {
+        final cached = existingImages[imageRow['id']];
+        return ProductImageData.fromRemoteMap(
+          imageRow,
+          existingLocalPath: cached?.remoteUrl == imageRow['remote_url']
+              ? cached?.localPath
+              : null,
+          existingLocalThumbnailPath:
+              cached?.remoteThumbnailUrl == imageRow['remote_thumbnail_url']
+              ? cached?.localThumbnailPath
+              : null,
+        );
+      }).toList()..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final remote = Product.fromRemoteMap(
+        row,
+        codesByProduct[id] ?? [],
+        images: images,
+      );
+      // Child rows can change independently. Compare their contents too, while
+      // excluding local image bytes from the comparison.
+      if (existing == null ||
+          _remoteContent(existing) != _remoteContent(remote)) {
+        changed.add(remote);
+      }
+      thumbnails.addAll(images);
+    }
+    if (_isDisposed || _marketSession?.marketId != marketId) return;
+    await _database.applyRemoteChanges(
+      marketId: marketId,
+      products: changed,
+      deletedIds: deleted,
     );
+    onProgress?.call(total, total);
+    _scheduleThumbnails(thumbnails);
+  }
+
+  String _remoteContent(Product product) {
+    final codes = [...product.codes]..sort((a, b) => a.id.compareTo(b.id));
+    final images = [...product.images]..sort((a, b) => a.id.compareTo(b.id));
+    return jsonEncode({
+      'product': product.toRemoteMap(),
+      'codes': codes.map((code) => code.toRemoteMap()).toList(),
+      'images': images.map((image) => image.toRemoteMap()).toList(),
+    });
+  }
+
+  void _scheduleThumbnails(List<ProductImageData> images) {
+    if (_isDisposed) return;
+    for (final image in images) {
+      if (image.remoteThumbnailUrl == null ||
+          image.remoteThumbnailUrl!.isEmpty) {
+        continue;
+      }
+      final key = '${image.id}:${image.remoteThumbnailUrl}';
+      if (!_thumbnailInFlight.contains(key)) _thumbnailBacklog[key] = image;
+    }
+    _startThumbnailWorker();
+  }
+
+  void _startThumbnailWorker() {
+    final marketId = _marketSession?.marketId;
+    if (_isDisposed ||
+        marketId == null ||
+        _thumbnailTask != null ||
+        _thumbnailBacklog.isEmpty) {
+      return;
+    }
+    _thumbnailTask = _cacheThumbnails(marketId)
+        .catchError((Object _) {
+          // Failed background cache writes will be retried on the next sync.
+        })
+        .whenComplete(() {
+          _thumbnailTask = null;
+          if (!_isDisposed && _thumbnailBacklog.isNotEmpty) {
+            _startThumbnailWorker();
+          }
+        });
+  }
+
+  Future<void> _cacheThumbnails(String marketId) async {
+    var changed = false;
+    while (!_isDisposed &&
+        _marketSession?.marketId == marketId &&
+        _thumbnailBacklog.isNotEmpty) {
+      // Bound concurrency so image downloads do not flood the connection.
+      final keys = _thumbnailBacklog.keys.take(4).toList();
+      final jobs = keys.map((key) => _thumbnailBacklog.remove(key)!).toList();
+      _thumbnailInFlight.addAll(keys);
+      try {
+        final results = await Future.wait(
+          jobs.map((image) async {
+            try {
+              if (image.localThumbnailPath != null &&
+                  await imageStorage.exists(image.localThumbnailPath!)) {
+                return null;
+              }
+              final path = await imageStorage.cacheImageFromUrl(
+                image.remoteThumbnailUrl!,
+                thumbnail: true,
+              );
+              return MapEntry(image, path);
+            } catch (_) {
+              return null;
+            }
+          }),
+        );
+        if (_isDisposed || _marketSession?.marketId != marketId) break;
+        final paths = Map<ProductImageData, String>.fromEntries(
+          results.whereType<MapEntry<ProductImageData, String>>(),
+        );
+        await _database.storeRemoteThumbnails(marketId, paths);
+        changed |= paths.isNotEmpty;
+      } finally {
+        _thumbnailInFlight.removeAll(keys);
+      }
+    }
+    if (changed && !_isDisposed && _marketSession?.marketId == marketId) {
+      _localChanges.add(null);
+    }
   }
 
   String _friendlyError(Object error) {
@@ -469,13 +564,21 @@ class SyncService {
   }
 
   void _setMarketSession(MarketSession? session) {
+    if (_marketSession?.marketId != session?.marketId) {
+      _thumbnailBacklog.clear();
+    }
     _marketSession = session;
     _database.setActiveMarket(session?.marketId);
   }
 
   Future<void> _persistMarketSession(MarketSession session) async {
+    final previous = _marketSession;
     _setMarketSession(session);
-    await _database.saveMarketSession(session);
+    _needsAccessValidation = false;
+    if (previous?.marketId != session.marketId ||
+        previous?.accessLevel != session.accessLevel) {
+      await _database.saveMarketSession(session);
+    }
     await _restartRealtimeSubscription();
   }
 
@@ -564,8 +667,10 @@ class SyncService {
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
+    _thumbnailBacklog.clear();
     await _stopRealtimeSubscription();
     await _remoteChanges.close();
+    await _localChanges.close();
   }
 }
 

@@ -21,7 +21,7 @@ mit Supabase abgeglichen.
 - mehrere Produktfotos mit Vollbild- und Zoomansicht
 - komprimierte Produktfotos und separat gespeicherte Miniaturbilder für kurze
   Ladezeiten
-- Cloud-Miniaturbilder werden beim Synchronisieren dauerhaft lokal gespeichert;
+- Cloud-Miniaturbilder werden nach dem Datenabgleich im Hintergrund dauerhaft lokal gespeichert;
   Cloud-Vollbilder nach dem ersten Öffnen in der Galerie
 - Fotos über Kamera, Galerie/Downloads oder produktbezogene Vorschläge von
   Unsplash
@@ -55,6 +55,12 @@ python3 tool/generate_offline_cache.py
 ```
 
 Ohne Cloud-Konfiguration arbeitet die App vollständig lokal.
+
+Der Start lädt den gespeicherten Marktzugang und Bestand direkt aus der lokalen
+Datenbank. Die Online-Prüfung läuft anschließend im Hintergrund. Beim Abgleich
+werden unveränderte Produkte nicht erneut geschrieben; geänderte Daten werden
+gebündelt gespeichert. Vorschaubilder laden mit begrenzter Parallelität nach und
+stehen offline zur Verfügung, sobald ihr Download abgeschlossen ist.
 
 ## Supabase einrichten
 

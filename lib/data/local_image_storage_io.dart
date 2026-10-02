@@ -52,6 +52,8 @@ class LocalImageStorage {
     return await file.exists() ? file.readAsBytes() : null;
   }
 
+  Future<bool> exists(String reference) => File(reference).exists();
+
   String extensionFor(String reference) {
     final extension = path.extension(reference).toLowerCase();
     return extension.isEmpty ? '.jpg' : extension;

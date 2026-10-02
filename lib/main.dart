@@ -15,7 +15,7 @@ import 'widgets/app_notice_gate.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await _enableWakelock();
+  unawaited(_enableWakelock());
 
   SupabaseClient? supabaseClient;
   if (hasSupabaseConfiguration) {

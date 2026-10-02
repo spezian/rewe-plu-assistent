@@ -28,7 +28,7 @@ jobs:
       - name: Check offline cache
         run: |
           python3 -m unittest discover -s test -p 'offline_cache_generator_test.py'
-          node --test test/offline_service_worker_test.mjs
+          node --test test/offline_service_worker_test.mjs test/web_startup_test.mjs
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
