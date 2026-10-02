@@ -2,7 +2,7 @@
 
 // Filled by generate_offline_cache.py after Flutter has built all resources.
 const CACHE_PREFIX = `rewe-plu-shell-${self.registration.scope}-`;
-const CACHE_NAME = CACHE_PREFIX + 'f95a1b1fc1f41606b417';
+const CACHE_NAME = CACHE_PREFIX + '192ec20cc53d73db9cd1';
 const RESOURCES = ["assets/AssetManifest.bin", "assets/AssetManifest.bin.json", "assets/FontManifest.json", "assets/NOTICES", "assets/fonts/MaterialIcons-Regular.otf", "assets/fonts/fallback/Roboto-Regular.ttf", "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf", "assets/packages/material_ui/shaders/ink_sparkle.frag", "assets/packages/wakelock_plus/assets/no_sleep.js", "assets/shaders/ink_sparkle.frag", "assets/shaders/stretch_effect.frag", "brand/logo.png", "brand/long_logo.png", "canvaskit/canvaskit.js", "canvaskit/canvaskit.wasm", "canvaskit/chromium/canvaskit.js", "canvaskit/chromium/canvaskit.wasm", "canvaskit/skwasm.js", "canvaskit/skwasm.wasm", "canvaskit/skwasm_heavy.js", "canvaskit/skwasm_heavy.wasm", "canvaskit/webparagraph/canvaskit.js", "canvaskit/webparagraph/canvaskit.wasm", "canvaskit/wimp.js", "canvaskit/wimp.wasm", "favicon.png", "flutter.js", "flutter_bootstrap.js", "icons/Icon-192.png", "icons/Icon-512.png", "icons/Icon-maskable-192.png", "icons/Icon-maskable-512.png", "icons/apple-touch-icon.png", "index.html", "main.dart.js", "main.dart.mjs", "main.dart.wasm", "manifest.json", "pwa_updates.js", "sqflite_sw.js", "sqlite3.wasm", "version.json"];
 const resourceUrls = new Set(
   RESOURCES.map((path) => new URL(path, self.registration.scope).href),

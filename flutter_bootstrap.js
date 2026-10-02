@@ -46,10 +46,15 @@ _flutter.buildConfig = {"engineRevision":"06a2e2a110089dff50fe635cffd2a61e1b24fb
   const config = {canvasKitBaseUrl: new URL('canvaskit/', document.baseURI).href};
   if ('serviceWorker' in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register(
-        new URL('flutter_service_worker.js', document.baseURI),
-        {updateViaCache: 'none'},
-      );
+      // An installed app can start from its cache immediately. Update checks
+      // run in pwa_updates.js without blocking startup on a network request.
+      const existing = await navigator.serviceWorker.getRegistration(document.baseURI);
+      const registration = existing?.active && navigator.serviceWorker.controller
+        ? existing
+        : await navigator.serviceWorker.register(
+          new URL('flutter_service_worker.js', document.baseURI),
+          {updateViaCache: 'none'},
+        );
       window.kassenmeisterUpdates?.watch(registration);
       if (!registration.active) {
         window.pluStartup?.status('Offline-Dateien werden vorbereitet …');
