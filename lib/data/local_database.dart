@@ -376,16 +376,15 @@ class LocalDatabase {
     );
     final productIds = productRows.map((row) => row['id'] as String).toSet();
     if (productIds.isEmpty) return const [];
-    final placeholders = List.filled(productIds.length, '?').join(',');
     final codeRows = await _db.query(
       'product_codes',
-      where: 'product_id IN ($placeholders)',
-      whereArgs: productIds.toList(),
+      where: 'product_id IN (SELECT id FROM products WHERE market_id = ?)',
+      whereArgs: [marketId],
     );
     final imageRows = await _db.query(
       'product_images',
-      where: 'product_id IN ($placeholders)',
-      whereArgs: productIds.toList(),
+      where: 'product_id IN (SELECT id FROM products WHERE market_id = ?)',
+      whereArgs: [marketId],
       orderBy: 'product_id, sort_order',
     );
     final codesByProduct = <String, List<ProductCode>>{};
@@ -455,6 +454,82 @@ class LocalDatabase {
     await _db.transaction((transaction) => _writeProduct(transaction, product));
   }
 
+  Future<void> applyRemoteChanges({
+    required String marketId,
+    required List<Product> products,
+    required List<String> deletedIds,
+  }) async {
+    if (products.isEmpty && deletedIds.isEmpty) return;
+    await _db.transaction((tx) async {
+      if (_activeMarketId != marketId) return;
+      // Re-check inside the transaction: users may have edited a product while
+      // its remote snapshot was downloading. Never overwrite queued changes.
+      final pending = (await tx.query(
+        'sync_queue',
+        columns: ['product_id'],
+        where: 'market_id = ?',
+        whereArgs: [marketId],
+      )).map((row) => row['product_id'] as String).toSet();
+      final cachedImages = {
+        for (final row in await tx.rawQuery(
+          'SELECT product_images.* FROM product_images '
+          'JOIN products ON products.id = product_images.product_id '
+          'WHERE products.market_id = ?',
+          [marketId],
+        ))
+          row['id'] as String: ProductImageData.fromDatabaseMap(row),
+      };
+      final batch = tx.batch();
+      for (final id in deletedIds) {
+        if (pending.contains(id)) continue;
+        batch.delete(
+          'products',
+          where: 'id = ? AND market_id = ?',
+          whereArgs: [id, marketId],
+        );
+      }
+      for (final product in products) {
+        if (pending.contains(product.id)) continue;
+        // Keep image downloads that finished after the local snapshot was read.
+        final images = product.images.map((image) {
+          final cached = cachedImages[image.id];
+          return ProductImageData.fromRemoteMap(
+            image.toRemoteMap(),
+            existingLocalPath: cached?.remoteUrl == image.remoteUrl
+                ? cached?.localPath ?? image.localPath
+                : image.localPath,
+            existingLocalThumbnailPath:
+                cached?.remoteThumbnailUrl == image.remoteThumbnailUrl
+                ? cached?.localThumbnailPath ?? image.localThumbnailPath
+                : image.localThumbnailPath,
+          );
+        }).toList();
+        _queueProductWrite(batch, product.copyWith(images: images), marketId);
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
+  Future<void> storeRemoteThumbnails(
+    String marketId,
+    Map<ProductImageData, String> paths,
+  ) async {
+    if (paths.isEmpty) return;
+    await _db.transaction((tx) async {
+      if (_activeMarketId != marketId) return;
+      final batch = tx.batch();
+      for (final entry in paths.entries) {
+        batch.rawUpdate(
+          'UPDATE product_images SET local_thumbnail_path = ? '
+          'WHERE id = ? AND remote_thumbnail_url = ? AND product_id IN '
+          '(SELECT id FROM products WHERE market_id = ?)',
+          [entry.value, entry.key.id, entry.key.remoteThumbnailUrl, marketId],
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   Future<void> applyRemoteImages(
     String productId,
     List<ProductImageData> images,
@@ -479,29 +554,35 @@ class LocalDatabase {
     DatabaseExecutor transaction,
     Product product,
   ) async {
-    await transaction.insert('products', {
+    final batch = transaction.batch();
+    _queueProductWrite(batch, product, _requireActiveMarketId());
+    await batch.commit(noResult: true);
+  }
+
+  void _queueProductWrite(Batch batch, Product product, String marketId) {
+    batch.insert('products', {
       ...product.toDatabaseMap(),
-      'market_id': _requireActiveMarketId(),
+      'market_id': marketId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-    await transaction.delete(
+    batch.delete(
       'product_codes',
       where: 'product_id = ?',
       whereArgs: [product.id],
     );
-    await transaction.delete(
+    batch.delete(
       'product_images',
       where: 'product_id = ?',
       whereArgs: [product.id],
     );
     for (final code in product.codes) {
-      await transaction.insert(
+      batch.insert(
         'product_codes',
         code.toDatabaseMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
     for (final image in product.images) {
-      await transaction.insert(
+      batch.insert(
         'product_images',
         image.toDatabaseMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,

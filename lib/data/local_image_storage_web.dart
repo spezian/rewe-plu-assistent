@@ -40,6 +40,8 @@ class LocalImageStorage {
   Future<Uint8List?> readBytes(String reference) async =>
       _bytesFromDataUri(reference);
 
+  Future<bool> exists(String reference) async => _isImageDataUri(reference);
+
   String extensionFor(String reference) {
     final separator = reference.indexOf(';');
     final mimeType = separator < 0

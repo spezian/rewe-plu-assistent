@@ -26,6 +26,7 @@ class AppController extends ChangeNotifier {
   final Duration liveSyncDebounce;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   StreamSubscription<void>? _remoteChangesSubscription;
+  StreamSubscription<void>? _localChangesSubscription;
   Timer? _liveSyncTimer;
   bool _liveSyncRequested = false;
   bool _isDisposed = false;
@@ -64,6 +65,10 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     _remoteChangesSubscription = repository.remoteChanges.listen((_) {
       _scheduleLiveSync();
+    });
+    _localChangesSubscription = repository.localChanges.listen((_) async {
+      await _reload();
+      if (!_isDisposed) notifyListeners();
     });
     await repository.initialize();
     await _reload();
@@ -197,10 +202,14 @@ class AppController extends ChangeNotifier {
     if (_isDisposed) return;
     pendingChanges = report.pendingCount;
     syncError = report.error;
-    syncState = report.succeeded ? AppSyncState.idle : AppSyncState.error;
+    syncState = !hasMarketAccess
+        ? AppSyncState.locked
+        : report.succeeded
+        ? AppSyncState.idle
+        : AppSyncState.error;
     await _reload();
     if (_isDisposed) return;
-    if (report.succeeded) _isInitialMarketLoading = false;
+    if (report.succeeded || _products.isNotEmpty) _isInitialMarketLoading = false;
     notifyListeners();
     if (_liveSyncRequested) _scheduleLiveSync();
   }
@@ -254,6 +263,7 @@ class AppController extends ChangeNotifier {
     _cancelScheduledLiveSync();
     _connectivitySubscription?.cancel();
     _remoteChangesSubscription?.cancel();
+    _localChangesSubscription?.cancel();
     unawaited(repository.dispose());
     super.dispose();
   }

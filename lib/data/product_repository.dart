@@ -24,6 +24,7 @@ class ProductRepository {
   bool get canEdit => _sync.canEdit;
   MarketSession? get marketSession => _sync.marketSession;
   Stream<void> get remoteChanges => _sync.remoteChanges;
+  Stream<void> get localChanges => _sync.localChanges;
 
   Future<void> initialize() async {
     await _database.initialize();
